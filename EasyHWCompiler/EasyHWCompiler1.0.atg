@@ -14,9 +14,9 @@ using namespace std;
 
 //-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
 
-const int cubosem[12][5][5] = 
+const int cubosem[13][5][5] = 
 {
-{{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 3, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //+
+{{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 13, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //+
 {{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 13, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //-
 {{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 13, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //*
 {{2, 2, 13, 5, 5}, {2, 2, 13, 5, 5}, {13, 13, 13, 13, 13}, {5, 5, 13, 5, 5}, {5, 5, 13, 5, 5}}, // /
@@ -25,9 +25,10 @@ const int cubosem[12][5][5] =
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //>
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //!=
-{{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 3, 13, 13}, {13, 13, 13, 4, 4}, {13, 13, 13, 5, 5}}, // <-
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//=
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<=
-{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}//>=
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//>=
+{{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 3, 13, 13}, {13, 13, 13, 4, 4}, {13, 13, 13, 5, 5}} // <-
 };
 
 
@@ -40,7 +41,7 @@ typedef map <int, Variable*> tablaVars;
 typedef map <int, tablaVars*> tablaProcs;
 typedef map <int, Componente*> tablaHardware;
 
-int buscaCubo(wstring op, int operando1, int operando2)
+int buscaCubo(wstring op, int opdo1, int opdo2)
 {
   int oper;
   int aprob;
@@ -93,12 +94,16 @@ int buscaCubo(wstring op, int operando1, int operando2)
   {
 	oper = 12;
   }
-  else if (op == L"NO")
+  else if (op == L"<-")
   {
 	oper = 13;
   } 
+  else if (op == L"NO")
+  {
+	oper = 14;
+  }
 
-   aprob = cubosem[oper][operando1][operando2];
+   aprob = cubosem[oper-1][opdo1-1][opdo2-1];
    return aprob;
 }
 
@@ -108,6 +113,7 @@ int myKey, procKey, varKey, hwKey, contRepeat, HWtype, VARtype;
 bool pantallaOcupada;
 wstring nombreProc, nombreVariable, nombreComponente;
 wstring lastToken, nextToken, varScope;
+wstring accionHW;
 hash <wstring> wstr_hash;
 tablaVars *ptrTVars;
 tablaProcs *ptrTProcs;
@@ -118,7 +124,8 @@ map <int, void*>::iterator it;
 map <int, void*> tablaScope;
 set <wstring> globalPinSet;
 int direccion, revTipo;
-list <Cuadruplo> tcuadruplos;
+map <int,Cuadruplo*> tCuadruplos;
+map<int,Cuadruplo*>::iterator iteC;
 stack <wstring> POperadores, POperandos;
 stack <int> PTipos; 
 stack<long double>PSaltos;
@@ -137,7 +144,6 @@ bool compilacionExitosa;
 long double contCuad;
 long double saltoFalso;
 long double saltoSino;
-list<Cuadruplo>::iterator iteC;
 // Variables para estatutos ciclicos
 long double finM;
 long double finH;
@@ -146,6 +152,7 @@ wstring varVeces;
 //Variables para Expresiones
 int tipoID;
 int destinoT;
+int tipoConstante;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -158,7 +165,7 @@ TOKENS
 	ID = lm{lM|lm|dig}.
 	ENTERO = dig{dig}.
 	DECIMAL = dig{dig}"."dig{dig}.
-	FRASE = '\"' str '\"'.
+	FRASE = '\"' {str} '\"'.
 	LETRA = "'"(lm|lM)"'".
 	ENDL = '\n'.
 	HMOTOR = "." ("retraso"|"velocidad"|"direccion").
@@ -195,7 +202,8 @@ PRODUCTIONS
 				myKey = wstr_hash(varScope);
 				tablaScope.insert(pair <int, void*> (myKey, new tablaProcs));
 				//Rellenado del setGlobal de pines para incluir los pines estaticos de la pantalla
-				pantallaOcupada = false;				
+				pantallaOcupada = false;			
+				signoEntero = L"";
 			.) 
 			"CONFIG" (.varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" 
 			(.
@@ -217,7 +225,26 @@ PRODUCTIONS
 				cout << "Funciones -- " << ptrTProcs -> size() << endl;
 			
 			.){ENDL} 
-			"PROGRAMA" BLOQUE EOF.	
+			"PROGRAMA" BLOQUE
+			(.
+				//Seccion Final y Maquina Virtual
+				if(compilacionExitosa)
+				{
+					cout << "El numero de cuadruplos generado es " << tCuadruplos.size() << endl;
+					for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
+						it->second->muestraCuadruplo();
+					cout << "El tamaño de la pila de saltos al final --> " << PSaltos.size() << endl;
+					cout << "El tamaño de la pila de tipos al final --> " << PTipos.size() << endl;
+					cout << "El tamaño de la pila de operadores al final --> " << POperadores.size() << endl;
+					cout << "El tamaño de la pila de operandos al final --> " << POperandos.size() << endl;
+										
+				}
+				else
+				{
+					cout << "La compilacion no fue exitosa, verifica errores" << endl;				
+				}
+			
+			.)EOF.	
 	
 	CONFIGURACION = COMPONENTE ID 
 					(. 
@@ -280,9 +307,7 @@ PRODUCTIONS
 				}
 				
 			.).
-			
-			
-			
+						
 //....................................................................VARIABLES Y FUNCIONES.................................................................................
 	VARIABLES = DECLARACIONES ENDL [VARIABLES].
 	DECLARACIONES = SIMPLE | ARREGLO.
@@ -445,9 +470,18 @@ PRODUCTIONS
 			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE.
 	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
 	
+	
+	
+	
+	
+	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
-	ESTATUTOS =  ("condicion" CONDICION | "ciclo" CICLOS | "llamar" LLFUNC | "asignar" ASIGN) [ESTATUTOS] .
+	ESTATUTOS =  ("condicion" (.cout << "CONDICION" << t->line <<endl;.)CONDICION 
+				| "ciclo" (.cout << "CICLO" << t->line << endl;.) CICLOS 
+				| "llamar" (.cout << "LLAMAR" << t->line << endl;.) LLFUNC ENDL
+				| "asignar" (.cout << "ASIGNACION" << t->line << endl;.) ASIGN ENDL 
+				) [ESTATUTOS].
 	
 	//----------------------------------------------------------------ESTATUTOS-------------------------------------------------------------------------------
 	//............................................................Seccion de CONDICION........................................................................
@@ -462,53 +496,39 @@ PRODUCTIONS
 					else
 					{
 						operando1 = POperandos.top();
+						wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 						POperandos.pop();
-						tcuadruplos.push_back(*(new Cuadruplo(L"saltoIF", operando1, L"", L"")));
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"saltoIF", operando1, L"", L"")));
+						wcout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						PSaltos.push(contCuad);
 						contCuad++;
-					}
-					/*
-					aux = PTipos.pop()
-					if(aux <> int) compilacionExitosa = false;
-					resul de pila de operandos
-					goto falso resultado ___
-					Push pila de saltos
-					*/
-				
-				.)BLOQUE ["sino"
+					}				
+				.)BLOQUE
 				(.
 					saltoFalso = PSaltos.top();
 					PSaltos.pop();
-					iteC = tcuadruplos.begin();
-					for(int i = 0; i < saltoFalso; i++)
-					{
-						iteC++;
-					}
-					iteC->setDestino(to_wstring(contCuad));
-					tcuadruplos.push_back(*(new Cuadruplo (L"saltoELSE", L"", L"", L"")));
+					tCuadruplos.find(saltoFalso)->second->setDestino(to_wstring(contCuad));
+				.)				
+				["sino"
+				(.
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad++,new Cuadruplo(L"saltoELSE", L"", L"", L"")));
+					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					PSaltos.push(contCuad);
 					contCuad++;					
-					/*
-					Generar      goto _______
-					sacar falso de pila-de-saltos
-					rellenar (rellenar falso, cont)
-					PUSH pila-de-saltos (cont - 1)
-					*/
 				.)
 				BLOQUE
 				(.
 					saltoSino = PSaltos.top();
 					PSaltos.pop();
-					iteC = tcuadruplos.begin();
-					for(int i = 0; i < saltoSino; i++)
-					{
-						iteC++;
-					}
-					iteC->setDestino(to_wstring(contCuad));
-					/*
-					Sacar fin de pila-de-saltos
-					rellenar (fin, cont)
-					*/
+					tCuadruplos.find(saltoSino)->second->setDestino(to_wstring(contCuad));
 				.)
 				].
 	//.........................................................................................................................................................
@@ -530,42 +550,31 @@ PRODUCTIONS
 					else
 					{
 						operando1 = POperandos.top();
+						wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 						POperandos.pop();
-						tcuadruplos.push_back(*(new Cuadruplo (L"falsoM", operando1, L"", L"")));
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"falsoM", operando1, L"", L"")));
+						cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						PSaltos.push(contCuad);
 						contCuad++;
 					}
-					/*
-					inicioM finM
-					Sacar aux de PTipos
-					if(aux <> bool) compilacionExitosa = true;
-					else{
-					Sacar resultado de PilaOperandos
-					Generar    gotofalso   resultado  ______
-					PUSH Psaltos (cont-1)
-					}
-					*/
 				.)
 				BLOQUE
 				(.
 					finM = PSaltos.top();
 					PSaltos.pop();
-					iteC = tcuadruplos.begin();
-					for(int i = 0; i < finM; i++)
-					{
-						iteC++;
-					}
-					iteC->setDestino(to_wstring(contCuad));
-					tcuadruplos.push_back(*(new Cuadruplo (L"regresaM", L"", L"", to_wstring(PSaltos.top()))));
+					tCuadruplos.find(finM)->second->setDestino(to_wstring(contCuad));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"regresaM", L"", L"", to_wstring(PSaltos.top()))));
+					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+					cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+					cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+					cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					PSaltos.pop();
 					contCuad++;
-					
-					/*
-					Sacar falso de PSaltos. 
-					Sacar retorno de PSaltos
-					Generar goto retorno
-					rellenar (falso, cont)
-					*/
 				.).
 				
 	VECES = ENTERO (.tipoVeces = 1;.)| ID 
@@ -593,7 +602,7 @@ PRODUCTIONS
 						}
 						else
 						{
-							wcout << L"La variable no se encuentra definida en el programa" << endl;
+							wcout << L"La variable no se encuentra definida en el programa111111" << endl;
 						}
 					}							
 										
@@ -601,7 +610,7 @@ PRODUCTIONS
 				
 	HAZ = 	"haz" "(" VECES 
 				(.
-					varVeces = lastToken;
+					varVeces = (wstring)t->val;
 					if(tipoVeces != 1)
 					{
 						compilacionExitosa = false;
@@ -609,42 +618,116 @@ PRODUCTIONS
 					}
 					else
 					{
-						tcuadruplos.push_back(*(new Cuadruplo(L"inicioHAZ", varVeces, L"", L"")));
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"inicioHAZ", varVeces, L"", L"")));
+						cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						contCuad++;
 					}
-					/*
-					varVeces = lastToken;
-					buscatTipo == (int)
-					*/
 				.) 
 			")" "veces" BLOQUE 
 				(.
-					tcuadruplos.push_back(*(new Cuadruplo(L"finHAZ", L"", L"", L"")));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finHAZ", L"", L"", L"")));
+					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					contCuad++;
 				.). 
 	//...........................................................................................................................................................
 	
 	//...................................................................LLAMADAS A FUNCIONES....................................................................
-	LLFUNC = ID "("[PARAMETROS]")" ENDL.
-		//FALTA VERIFICAR QUE LOS PARAMETROS CORRESPONDAN EN NUMERO Y EN TIPO
+	LLFUNC = ID "("[PARAMETROS]")".
+		//FALTA VERIFICAR QUE LA FUNCION EXISTA LOS PARAMETROS CORRESPONDAN EN NUMERO Y EN TIPO
 	
 	//...........................................................................................................................................................
 	
 	//.....................................................................Seccion de ASIGNACION.................................................................
-	ASIGN =  ID [VARHW] ASIGNACION.
+	ASIGN =  ID 
+			(.
+					// Corroborar el tipo de ID
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);						
+			.)
+			[VARHW]
+			(.
+				accionHW = (wstring) t->val;
+				
+				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+				contRepeat = ptrTVars -> count(varKey);
+				if(contRepeat != 0)
+				{
+					ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+					tipoID = ptrVariable->getTipo();
+					wcout << "Se esta a punto de meter el operando ASGIN " << nombreVariable << endl;
+					POperandos.push(nombreVariable);
+					PTipos.push(tipoID);
+					wcout << "Contenido despues del push de POperandos: " << POperandos.top() << endl;
+					wcout << "La variable " << nombreVariable << " fue encontrada Global" << endl;
+				}
+				else
+				{
+					ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+					contRepeat = ptrTHW -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrComponente = (Componente*) ptrTHW->find(varKey)->second;
+						tipoID = ptrComponente->getTipo(accionHW);
+						wcout << "Se esta a punto de meter el operando ASIGN HW " << nombreVariable+accionHW << endl;
+						POperandos.push(nombreVariable + accionHW);
+						PTipos.push(tipoID);
+						wcout << "La variable " << nombreVariable << " fue encontrada en HW" << endl;
+					}
+					else
+					{
+						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						contRepeat = ptrTVars -> count(varKey);
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							tipoID = ptrVariable->getTipo();
+							wcout << "Se esta a punto de meter el operando ASIGN LOCAL" << nombreVariable << endl;
+							POperandos.push(nombreVariable);
+							PTipos.push(tipoID);
+							wcout << "La variable " << nombreVariable << " fue encontrada Local" << endl;
+						}
+						else
+						{
+							wcout << L"La variable " << nombreVariable << " no se encuentra definida" << endl;
+						}
+					}		
+				}
+			.)
+			ASIGNACION.
 	ASIGNACION = "<-" 
 				(.
+					lastToken = (wstring)t->val;
+					wcout << "Se agregara el siguiente operador: " << lastToken << endl;
 					POperadores.push(lastToken);// push(=) asignacion
+					wcout << "Se agrego " << lastToken << " exitosamente" << endl;
+					
 				.)
-				( EXPRESION | FRASE )  
+				( EXPRESION (.cout << "Me llego una expresion"<<endl; .)| FRASE (.cout << "Me llego una frase" << endl; lastToken = (wstring)t->val;POperandos.push(lastToken); PTipos.push(3);.) )  
 				(.
+				if(POperadores.size() != 0)
+				 {
 					if(POperadores.top() == L"<-")
 					{
+						cout << "Entramos al if de ASIGNACION" << endl;
 						operador = POperadores.top();
+						wcout << "Operador = " << POperadores.top() << endl;
 						POperadores.pop();
+						wcout << "Pop de Operadores Hecho!!" << endl;
 						operandoT1 = PTipos.top();
+						wcout << "OperandoT1 = " << PTipos.top() << endl;
 						PTipos.pop();
+						wcout << "Pop de Tipos Hecho!!" << endl;
 						destinoT = PTipos.top();
+						wcout << "Operando Destino = " << PTipos.top() << endl;
 						PTipos.pop();
 						revTipo = buscaCubo(operador, destinoT, operandoT1);
 						if(revTipo == 13)
@@ -655,16 +738,23 @@ PRODUCTIONS
 						else
 						{
 						    operando1 = POperandos.top();
+							wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 							POperandos.pop();
 							destino = POperandos.top();
+							wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 							POperandos.pop();
 							operando2 = L"";
-							PTipos.push(revTipo);
-							tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));
+							tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
+							cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+							cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+							cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+							cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+							cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+							contCuad++;//Faltaba este contCuad++, no estoy seguro de si va
 						}
 					}
-				.) 
-				ENDL.
+				}
+				.).
 	//...........................................................................................................................................................
 	
 	//--------------------------------------------------------------------------EXPRESIONES----------------------------------------------------------------------
@@ -672,8 +762,14 @@ PRODUCTIONS
 	//......................................................................Seccion de EXPRESION.................................................................
 	EXPRESION = EXP 
 				(.
+				
+				if(POperadores.size() != 0)
+				 {
+					wcout << "El top de POperadores en FACTOR es: " << POperadores.top();
+					
 					if(POperadores.top() == L"<" || POperadores.top() == L">" || POperadores.top() == L"<=" || POperadores.top() == L">=" || POperadores.top() == L"!=" || POperadores.top() == L"=")
 					{
+						cout << "Si encontre un <" << endl;
 						operador = POperadores.top();
 						POperadores.pop();
 						operandoT2 = PTipos.top();
@@ -689,59 +785,94 @@ PRODUCTIONS
 						else
 						{
 							operando2 = POperandos.top();
+							wcout << "Se esta a punto de sacar el operando2 EXPRESION " << POperandos.top() << endl;
 							POperandos.pop();
 							operando1 = POperandos.top();
+							wcout << "Se esta a punto de sacar el operando1 EXPRESION" << POperandos.top() << endl;
 							POperandos.pop();
 							strTemp = L"t" + to_wstring(contT);
 							destino = strTemp;
-						    tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+						    tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+							cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+							cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						    cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						    cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						    cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+							wcout << "Se esta a punto de meter el operando EXPRESION " << destino << endl;
 						    POperandos.push(destino);
 						    PTipos.push(revTipo);
+							contCuad++;
 						    contT++;
 						}
 					}
+				}
 				.)
 				[(">"|"<"|"<="|">="|"!="|"=") 
 				(.
+					wcout << "Ohh mira me acaba de llegar algo de la seccion de < > <= etc" << endl;
+					lastToken = (wstring)t->val;
+					wcout << "Se agregara el siguiente operador: " << lastToken << endl;
 					POperadores.push(lastToken);/* push de operador */
 				.)
-				EXP].
+				EXPRESION].
 	//.............................................................................................................................................................
 	
 	//................................................................Seccion de EXP...............................................................................
 	EXP = TERMINO 
 		(.
+		 if(POperadores.size() != 0)
+		{
 			if(POperadores.top() == L"+" || POperadores.top() == L"-" || POperadores.top() == L"Y" || POperadores.top() == L"O")
 			{
 				operador = POperadores.top();
-				POperandos.pop();
+				wcout << "Se esta a punto de sacar el operador " << POperadores.top() << endl;
+				POperadores.pop();
 				operandoT2 = PTipos.top();
 				PTipos.pop();
+				cout << "El tipo de Operando2 es: " << operandoT2 << endl;
 				operandoT1 = PTipos.top();
 				PTipos.pop();
+				cout << "El tipo de Operando1 es: " << operandoT1 << endl;
 				revTipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
+				cout << "El tipo resulantes de Opdo1 y Opd2 es: " << revTipo << endl;
 				if (revTipo == 13)
 				{
 					compilacionExitosa = false;
-					wcout << L"Tipos no compatibles en la linea " << t ->line  << endl;
+					wcout << L"Tipos no compatibles en la linea " << t->line  << endl;
 				}
 				else
 				{
 				   operando2 = POperandos.top();
+				   wcout << "Se esta a punto de sacar el operando2 EXP " << POperandos.top() << endl;
 				   POperandos.pop();
 				   operando1 = POperandos.top();
+				   wcout << "Se esta a punto de sacar el operando1 EXP " << POperandos.top() << endl;
 				   POperandos.pop();
 				   strTemp = L"t" + to_wstring(contT);
 				   destino = strTemp;
-				   tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));
+				   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
+				   cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+				   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+				   cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+				   cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+				   cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+				   wcout << "Se esta a punto de meter el operando EXP" << destino << endl;
 				   POperandos.push(destino);
 				   PTipos.push(revTipo);
+				   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+				   cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+				   cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+				   cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+				   contCuad++;
 				   contT++;
 				}
 			}
+		}
 		.)
 		[("+"|"-"|"Y"|"O") 
 		(.
+			lastToken = (wstring)t->val;
+			wcout << "Se agregara el siguiente operador: " << lastToken << endl;
 			POperadores.push(lastToken);/*meter operador a POperadores*/
 		.)
 		EXP].
@@ -750,6 +881,8 @@ PRODUCTIONS
 	//..................................................................Seccion de TERMINO.........................................................................
 	TERMINO = FACTOR 
 			  (.
+				 if(POperadores.size() != 0)
+				 {
 				  if(POperadores.top() == L"*" || POperadores.top() == L"/" || POperadores.top() == L"NO")
 				   {
 					   operador = POperadores.top();
@@ -767,21 +900,33 @@ PRODUCTIONS
 					   else
 					   {
 						   operando2 = POperandos.top();
+						   wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 						   POperandos.pop();
 						   operando1 = POperandos.top();
+						   wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 						   POperandos.pop();
 						   strTemp = L"t" + to_wstring(contT);
 						   destino = strTemp;
-						   tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+						   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+						   cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+						   wcout << "Se esta a punto de meter el operando TERMINO " << destino << endl;
 						   POperandos.push(destino);
 						   PTipos.push(revTipo);
+						   contCuad++;
 						   contT++;
 						   
 						}
 				   }
+				}
 			  .)
 			  [("*"|"/"|"NO") 
 			  (.
+					lastToken = (wstring)t->val;
+					wcout << "Se agregara el siguiente operador: " << lastToken << endl;
 					POperadores.push(lastToken);/*meter operador a POperadores*/			  
 			  .)
 			  TERMINO].
@@ -792,21 +937,28 @@ PRODUCTIONS
 	FACTOR = "(" 
 			(.
 				POperadores.push(L"(");/*6 meter fondo falso*/
+				wcout << "Se agrego fondo falso" << endl;
 			.)
 			EXPRESION ")" 
 			(.
 				POperadores.pop();/*7 sacar fondo falso*/
+				wcout << "Se saco fondo falso" << endl;
 			.)
 			| 
-			(.signoEntero = L"";.)
-			(["-"(.signoEntero = lastToken;.)]
+			(["-"(.signoEntero = (wstring)t->val;.)]
 			CTE
 			(.
-				POperandos.push(signoEntero+lastToken);/*push constante*/			
+				lastToken = (wstring)t->val;
+				tipoID = tipoConstante;
+				idt = signoEntero + lastToken;
+				signoEntero = L"";
 			.)
-			| ID 
+			
+			| 
+			ID 
 			(.
-				idt = lastToken;/*var aux para id*/
+					idt = (wstring)t->val;/*var aux para id*/
+					wcout << "IDT EN FACTOR ID/HW " << idt;
 					
 					// Corroborar el tipo de ID
 					nombreVariable = (wstring) t -> val;
@@ -817,7 +969,9 @@ PRODUCTIONS
 					if(contRepeat != 0)
 					{
 						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
-						tipoID = ptrVariable->getTipo();								
+						tipoID = ptrVariable->getTipo();	
+						wcout << "El tipo de la variable global es: " << tipoID << endl;
+						
 					}
 					else
 					{
@@ -828,41 +982,58 @@ PRODUCTIONS
 						{
 							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
 							tipoID = ptrVariable->getTipo();
+							
 						}
 						else
 						{
-							wcout << L"La variable no se encuentra definida en el programa" << endl;
+							wcout << L"La variable " << nombreVariable << " no se encuentra definida en el programa" << endl;
 						}
 					}						
 				
 			.)
 			["posicion" ENTERO 
 			(.
-				if(tipoID != 4 || tipoID != 5)
+				lastToken = (wstring)t->val;
+				//CHECAR SI LASTTOKEN ES MENOR O IGUAL QUE EL NUMERO DE CASILLAS DEFINIDAS EN LA DECLARACION
+				//if(lastToken > NUMERODECASILLAS)
+				//{
+				//cout << "Error la posicion excede el numero de casillas" << endl;
+				if(tipoID == 4 || tipoID == 5)
 				{
-					compilacionExitosa = false;
-					wcout << "Error!! La variable declarada no es un arreglo " << endl;
+						idt = idt + L"[" + lastToken + L"]";
+						
+						if(tipoID==4)
+							tipoID = 1;
+						else
+							tipoID = 2;
 				}
 				else
 				{
-					idt = idt + L"[" + lastToken + L"]";
+					
+					compilacionExitosa = false;
+					wcout << "Error!! La variable declarada no es un arreglo " << endl;
 				}
 			.)
 			| VARHW
 			(.
+				lastToken = (wstring)t->val;
+				
 				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
 				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
 				tipoID = ptrComponente->getTipo(lastToken);/*obtener el tipo del atributo de la variable de HW*/
-				idt = idt + L"." + lastToken;/*cambiar tipo de token para que incluya HW*/
+				idt = idt + lastToken;/*cambiar tipo de token para que incluya HW*/
 			.)
 			]) 
 			(.
+				wcout << "Se esta a punto de meter el operando FACTOR " << idt << endl;
 				POperandos.push(idt); /*Push pila deoperandos*/
+				wcout << "El top de POperandos en FACTOR es: " << POperandos.top();
 				PTipos.push(tipoID);/*Push pila de tipos*/
-			.)
-			.
+				wcout << "El top de PTipos en FACTOR es: " << PTipos.top();
+				
+			.).
 	//.............................................................................................................................................................
-	CTE = ENTERO | DECIMAL.
+	CTE = ENTERO (.tipoConstante = 1;.) | DECIMAL (.tipoConstante = 2;.).
 	VARHW = HMOTOR | HSENSOR | HLED | HPANTALLA | HSERVO | HBOTON.
 	
 END EASYHW.
