@@ -10,10 +10,10 @@
 #include <functional>
 #include <fstream>
 #include <direct.h>
-#include "Variable.h";
-#include "Componente.h";
-#include "Cuadruplo.h";
-#include "Parametro.h";
+#include "Variable.h"
+#include "Componente.h"
+#include "Cuadruplo.h"
+#include "Parametro.h"
 using namespace std;
 
 //-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
@@ -180,7 +180,7 @@ map <int, void*>::iterator it;
 map <int, void*> tablaScope;
 map <int,list<wstring>*> tLlParametros;
 list<wstring>* ptrListaParametros;
-long double contLlFunc;
+int contLlFunc;
 set <wstring> globalPinSet;
 int direccion, revTipo;
 int arrCasillas,dimension;
@@ -188,7 +188,7 @@ map <int,Cuadruplo*> tCuadruplos;
 map <int,Cuadruplo*>::iterator iteC;
 stack <wstring> POperadores, POperandos;
 stack <int> PTipos; 
-stack<long double>PSaltos;
+stack<int>PSaltos;
 wstring operador, operando1, operando2, destino;
 wstring idt; // ID temporal
 wstring signoEntero;
@@ -197,15 +197,15 @@ int operandoT1, operandoT2;
 // Temporal para el estatuto "while"
 int auxTipo;
 // Variables para crear temporales
-long double contT;
+int contT;
 wstring strTemp;
 // Variables para estatuto "if"
-long double contCuad;
-long double saltoFalso;
-long double saltoSino;
+int contCuad;
+int saltoFalso;
+int saltoSino;
 // Variables para estatutos ciclicos
-long double finM;
-long double finH;
+int finM;
+int finH;
 int tipoVeces;
 wstring varVeces;
 //Variables para Expresiones
@@ -225,6 +225,12 @@ int pinCont;
 wstring pinesComponente;
 //Variables utilizadas para la maquina virtual
 string dirPath;
+wstring pina, pinb, campoa, campob;
+int find1, find2;
+wstring opdoVM1, opdoVM2, destinationVM, operVM, tempVM;
+list<wstring> *ptrParam;
+wstring tipoPaux, nombrePaux;
+wstring auxOperVM;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -292,7 +298,7 @@ PRODUCTIONS
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
 				wofstream archIno;
-				wofstream archVarFuncSetup;
+				wofstream archVarSetup;
 				wofstream archDef;
 				wofstream archLoop;
 				wofstream archHW;
@@ -308,7 +314,7 @@ PRODUCTIONS
 				wstring tipoReal;
 				
 				//Creacion y apertura de los archivos que contendran las partes de la traduccion
-				archVarFuncSetup.open("VarFuncSetup.txt");
+				archVarSetup.open("VarSetup.txt");
 				archDef.open("Def.txt");
 				archLoop.open("Loop.txt");	
 				archHW.open("Hardware.txt");
@@ -400,60 +406,7 @@ PRODUCTIONS
 							break;
 					}
 					
-				}
-				//Funciones
-				cout << "---------------------Seccion de Funciones------------------------" << endl;
-				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-				ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
-				contListParam = 0;
-				for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
-				{ 	
-					if(it->second->getOper() == L"IniciaFunc")
-					{
-						funcName = it->second->getDestino();
-						wcout << L"void " << funcName << L"(";
-						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
-						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
-						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
-						{
-							contListParam++;
-							typePar = (*itP)->getTipo();
-							wcout <<  traduceTipoParametro(typePar) << L" " << (*itP)->getNombre();
-							if(contListParam != ptrParametros->size())
-								wcout<< L", ";	
-						}
-						wcout << L")" << endl << L"{" << endl;
-						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
-						for(tablaVars::iterator it = ptrTVars->begin();it != ptrTVars->end();it++)
-						{
-							tipoLocalVar = it->second->getTipo();
-							switch(tipoLocalVar)
-							{
-								case 1:
-									wcout << L"int " << it->second->getNombre() << L";" << endl;
-									break;
-								case 2:
-									wcout << L"double " << it->second->getNombre() << L";" << endl;
-									break;
-								case 3:
-									wcout << L"string " << it->second->getNombre() << L";" << endl;
-									break;
-								case 4:
-									wcout << L"int " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
-									break;												
-								case 5:
-									wcout << L"double " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
-									break;
-							}
-							
-						}
-						
-						wcout << L"}" << endl;						
-					}
-				}
-				
-				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-				
+				}				
 				//'''''''''''''''''''''''''''''''''''''''''''''Seccion de SETUP''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				wcout << "----------------------Seccion de SETUP----------------------" << endl;
 				wcout << L"void setup()" << endl << L"{" << endl;
@@ -469,11 +422,693 @@ PRODUCTIONS
 				//''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				
 				//'''''''''''''''''''''''''''''''''''''''''''''''Seccion de LOOP'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-				wcout << L"----------------------Seccion de LOOP----------------------" << endl;
-				wcout << L"void loop()" << endl << L"{" << endl;
+				//Funciones
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+				ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+				contListParam = 0;
+				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				
-				
-				
+				for(int i = 1; i <= tCuadruplos.size(); i++)
+				{
+					operVM = tCuadruplos.find(i)->second->getOper();
+					if(operVM == L"IniciaFunc")
+					{
+						funcName = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"void " << funcName << L"(";
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
+						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
+						{
+							contListParam++;
+							typePar = (*itP)->getTipo();
+							archLoop <<  traduceTipoParametro(typePar) << L" " << (*itP)->getNombre();
+							if(contListParam != ptrParametros->size())
+								archLoop<< L", ";	
+						}
+						archLoop << L")" << endl << L"{" << endl;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+						for(tablaVars::iterator it = ptrTVars->begin();it != ptrTVars->end();it++)
+						{
+							tipoLocalVar = it->second->getTipo();
+							switch(tipoLocalVar)
+							{
+								case 1:
+									archLoop << L"\tint " << it->second->getNombre() << L";" << endl;
+									break;
+								case 2:
+									archLoop << L"\tdouble " << it->second->getNombre() << L";" << endl;
+									break;
+								case 3:
+									archLoop << L"\tstring " << it->second->getNombre() << L";" << endl;
+									break;
+								case 4:
+									archLoop << L"\tint " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+									break;												
+								case 5:
+									archLoop << L"\tdouble " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+									break;
+							}	
+						}						
+					}
+					
+					if(operVM == L"FinFunc")
+					{
+						archLoop << L"}" << endl;
+						auxOperVM = tCuadruplos.find(i+1)->second->getOper(); 
+						if(auxOperVM == L"IniciaFunc")
+						{
+						}
+						else
+						{
+							archLoop << L"limites(int num)" << endl; 
+							archLoop << L"{" << endl;
+							archLoop << L"\tif(num<0)"<< endl << L"\tnum = 0;" << endl; // para menor que 0
+							archLoop << L"\telse if(num>255)"<< endl << L"\tnum = 255;" << endl; // para mayor que 255
+							archLoop << L"\treturn(num);" << endl;
+							archLoop << L"}" << endl;
+							
+							archLoop << L"void loop()" << endl << L"{" << endl;
+						
+						}
+					}
+					
+					
+					if(L"<-" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						find2 = destinationVM.find(L".");
+						if(find2 != -1)
+						{							
+							pinb = destinationVM.substr(0,find2);
+							campob = destinationVM.substr(find2 + 1);
+							destinationVM = pinb + campob;
+							archLoop << L"\t" << destinationVM << L" = " << opdoVM1 << L";" << endl;
+							//----------------Para Analog Write de asignacion-------------------------------------
+									if(campob == L"velocidad")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tanalogWrite(" << pinb << L",var_escritura" << ");" << endl;	
+									}
+									if(campob == L"direccion")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tif( var_escritura = 0)" << endl << "\t{" << endl;
+										//---Accion---------
+										archLoop << L"\tdigitalWrite(" << pinb + L"_fwd" << L",LOW);" << endl;
+										archLoop << L"\tdigitalWrite(" << pinb + L"_bwd" << L",HIGH);" << endl;
+										archLoop << "\t}" << endl;
+										//------------------
+										archLoop << "\telse" << endl << "\t{" << endl; //Cuando es mayor a cero
+										//----Accion--------
+										archLoop << L"\tdigitalWrite(" << pinb + L"_fwd" << L",HIGH);" << endl;
+										archLoop << L"\tdigitalWrite(" << pinb + L"_bwd" << L",LOW);" << endl;
+										//------------------		
+										archLoop << "\t}" << endl;
+									}
+									if(campob == L"estado")
+									{
+										cout << "No puedes escribir en un pin de entrada" << endl;
+										error();
+									}
+									if(campob == L"encendido")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tif(var_escritura= 0)" << endl; //Cuando es igual a cero
+										//----Accion-----
+										archLoop << L"digitalWrite(" << pinb << L",LOW);" << endl;
+										//---------------
+										archLoop << L"else" << endl; //Cuando es mayor a cero
+										//----Accion------
+										archLoop << L"digitalWrite(" << pinb << L",HIGH);" << endl;
+										//----------------
+									}
+									if(campob == L"imprime")
+									{
+										//rutina para impresion en LCD
+									}
+									if(campob == L"angulo")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tif(var_escritura > 180)" << endl;
+										archLoop << L"\tvar_escritura = 180;" << endl;
+										archLoop << pinb << L"." << L"write(var_escritura);" << endl;
+									}
+									if(campob == L"lectura" )
+									{
+										cout << "No puedes escribir en un pin de entrada" << endl;
+										error();
+									}
+							//-------------------------------------------------------------------
+						}
+						else
+						{
+							archLoop << L"\t" << destinationVM << L" = " << opdoVM1 << L";" << endl;
+						}
+					} 
+					else if(L"<" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" < " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L">" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" > " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"<=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" < " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L">=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" >= " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" == " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"+" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" + " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"-" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" - " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"Y" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" && " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					}
+					else if(L"O" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" || " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"*" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" * " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"/" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" / " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					/*else if(L"NO" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + operVM + opdoVM2 + L")";
+					} */
+					else if(L"falsoM" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						tempVM = L"while(" + opdoVM1 + L")";
+						archLoop << L"\t" << tempVM << endl << L"\t{" << endl;
+					} 
+					else if(L"regresaM" == operVM)
+					{
+						archLoop  <<  L"\t}" << endl;
+					} 
+					else if(L"inicioHAZ" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						tempVM = L"\tfor(int i = 0; i < " + opdoVM1 + L"; i++)";
+						archLoop << tempVM << endl << L"\t{"<< endl;
+					} 
+					else if(L"finHAZ" == operVM)
+					{
+						archLoop << L"\t}" << endl;
+					} 
+					else if(L"inicioIf" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0,find1-1);
+							campoa = opdoVM1.substr(find1+1);
+							opdoVM1 = L"\t" + pina + campoa;
+						}
+						archIno << L"\tif(" + opdoVM1 + L")" << endl;
+						archIno << L"\t{" << endl;
+					}
+					else if(L"finIf" == operVM)
+					{
+						archIno << L"\t}" << endl;
+					}
+					else if(L"inicioElse" == operVM)
+					{
+						archIno << L"\telse" << endl << L"\t{" << endl;
+					}
+					else if(L"finElse" == operVM)
+					{
+						archIno << L"\t}" << endl;
+					}
+					else if(L"llamaFunc" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"\t" <<destinationVM << L"(";
+						ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
+						for(int f = 1; f < ptrParam->size(); f++)
+						{
+							ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
+							nombrePaux = ptrParam->front();
+							ptrParam->pop_front();
+							archLoop << nombrePaux << L",";
+						}
+						nombrePaux = ptrParam->front();
+						archLoop << nombrePaux << L");" << endl;
+					}
+				}
+				archLoop << L"}";
 				
 				
 				
