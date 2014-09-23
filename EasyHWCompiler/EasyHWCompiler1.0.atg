@@ -231,7 +231,7 @@ wstring opdoVM1, opdoVM2, destinationVM, operVM, tempVM;
 list<wstring> *ptrParam;
 wstring tipoPaux, nombrePaux;
 wstring auxOperVM;
-bool hayFunciones;
+bool hayFunciones,vinoEnt,arregloTipoID,vienenParametros;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -273,6 +273,9 @@ PRODUCTIONS
 				pinCont = 0;
 				contT = 1;
 				vinoPos = false;
+				vinoEnt = false;
+				arregloTipoID = false;
+				vienenParametros = false;
 				hayFunciones = false;
 				contParams = 0;
 				contLlFunc = 1;
@@ -295,7 +298,7 @@ PRODUCTIONS
 			"CONFIG" (.varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" {ENDL} 
 			"VARG" (.varScope = L"Global";.) ENDL "{" ENDL [VARIABLES] "}" {ENDL} 
 			"FUNCIONES" (.varScope = L"Local";.) ENDL "{" ENDL [FUNC(.hayFunciones = true;.)] "}"(. llamandoFunc = true;.){ENDL} 
-			"PROGRAMA" BLOQUE
+			"PROGRAMA" (.varScope = L"main";.) BLOQUE
 			(.
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
@@ -591,7 +594,7 @@ PRODUCTIONS
 									}
 									if(campob == L"estado")
 									{
-										cout << "No puedes escribir en un pin de entrada" << endl;
+										cout << "ERROR!!No puedes escribir en un pin de entrada" << endl;
 										error();
 									}
 									if(campob == L"encendido")
@@ -1070,12 +1073,6 @@ PRODUCTIONS
 						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" / " + opdoVM2 + L")";
 						archDef << tempVM << endl;
 					} 
-					/*else if(L"NO" == operVM)
-					{
-						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
-						destinationVM = tCuadruplos.find(i)->second->getDestino();
-						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + operVM + opdoVM2 + L")";
-					} */
 					else if(L"falsoM" == operVM)
 					{
 						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
@@ -1144,15 +1141,21 @@ PRODUCTIONS
 						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
 						destinationVM = tCuadruplos.find(i)->second->getDestino();
 						archLoop << L"\t" <<destinationVM << L"(";
-						ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
-						for(int f = 1; f < ptrParam->size(); f++)
+						if(opdoVM1 != L"0")
 						{
 							ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
-							nombrePaux = ptrParam->front();
-							ptrParam->pop_front();
-							archLoop << nombrePaux << L",";
+							//if(!(ptrParam->size() == 0))
+							//{
+								for(int f = 1; f < ptrParam->size(); f++)
+								{
+									ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
+									nombrePaux = ptrParam->front();
+									ptrParam->pop_front();
+									archLoop << nombrePaux << L",";
+								}
+								nombrePaux = ptrParam->front();
+							//}
 						}
-						nombrePaux = ptrParam->front();
 						archLoop << nombrePaux << L");" << endl;
 					}
 				}
@@ -1458,7 +1461,6 @@ PRODUCTIONS
 							ptrVariable -> setNombre(nombreVariable);
 							ptrVariable -> setTipo(VARtype);
 							ptrVariable -> setNumCasillas(dimension);
-							//cout << "La dimension del arreglo es: " << dimension << endl;
 						}
 						else
 						{
@@ -1853,6 +1855,7 @@ PRODUCTIONS
 			"("[
 			(.
 				ptrListaParametros = new list<wstring>;
+				vienenParametros = true;
 			.)
 			LLPARAMETROS]")"
 			(.
@@ -1863,121 +1866,223 @@ PRODUCTIONS
 					cout << t->line << ":ERROR!! Existen menos argumentos que los que necesita la funcion" << endl;
 					error();
 				}
-				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring((long double)contLlFunc), L"",nombreFuncLl)));
+				if(vienenParametros)
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring((long double)contLlFunc), L"",nombreFuncLl)));
+				else
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", L"0" , L"",nombreFuncLl)));
 				contCuad++;
 				tLlParametros.insert(pair<int,list<wstring>*>(contLlFunc,ptrListaParametros));
 				contLlFunc++; 
-				contParams = 0;				
+				contParams = 0;		
+				vienenParametros = false;
 			.).	
 	//...........................................................................................................................................................
 	
 	//.....................................................................Seccion de ASIGNACION.................................................................
-	ASIGN =  ID 
-			(.
-					// Corroborar el tipo de ID
-					nombreVariable = (wstring) t -> val;
-					idt = nombreVariable;
-					varKey = wstr_hash(nombreVariable);	
-			.)
-			[VARHW  | "posicion" ENTERO (.vinoPos = true;.)] 
-			(.
-				accionHWoPos = (wstring) t->val;
-				
-				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
-				contRepeat = ptrTVars -> count(varKey);
-				if(contRepeat != 0)
+	ASIGN = ID 
+	(.
+			// Corroborar el tipo de ID
+			nombreVariable = (wstring) t -> val;
+			idt = nombreVariable;
+			varKey = wstr_hash(nombreVariable);	
+	.)
+	[VARHW | "posicion" (ENTERO (.vinoEnt = true;.) | ID) (.vinoPos = true;.)] 
+	(.
+		accionHWoPos = (wstring) t->val;
+		
+		ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+		contRepeat = ptrTVars -> count(varKey);
+		if(contRepeat != 0)
+		{
+			ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+			tipoID = ptrVariable->getTipo();
+			if(tipoID == 4 || tipoID == 5)
+			{
+				if(vinoPos)
 				{
-					ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
-					tipoID = ptrVariable->getTipo();
-					if(tipoID == 4 || tipoID == 5)
+					//AQUI ESTA LO QUE SE CAMBIO PARA ARREGLOS----------------------
+					if(!vinoEnt)
 					{
-						if(vinoPos)
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+						if(contRepeat != 0)
 						{
-							arrCasillas = ptrVariable->getNumCasillas();
-							if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+							ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+							arregloTipoID = ptrVariable->getTipo();
+						}
+						else
+						{
+							if(varScope == L"Local")
 							{
-								cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
-								error();
+								ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+								ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+								ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+								contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+								if(contRepeat != 0)
+								{
+									ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+									arregloTipoID = ptrVariable->getTipo();
+								}
+								else
+								{
+									wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+									error();
+								}
 							}
 							else
 							{
-								nombreVariable = nombreVariable + L"[" + accionHWoPos + L"]";
+								wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+								error();							
+							}
+						}
+
+						if(arregloTipoID != 1)
+						{
+							cout << t->line << ":La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+							error();
+						}
+					}
+					else
+					{
+						arrCasillas = ptrVariable->getNumCasillas();
+						if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+						{
+							cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
+							error();
+						}
+					}
+
+					nombreVariable = nombreVariable + L"[" + accionHWoPos + L"-1]";
+					if(tipoID==4)
+						tipoID = 1;
+					else
+						tipoID = 2;
+				}
+				else
+				{
+					wcout << t->line << ":ERROR!! Debe venir posicion del arreglo" << endl;
+					error();
+				}	
+			}
+
+			POperandos.push(nombreVariable);
+			PTipos.push(tipoID);
+		}
+		else
+		{
+			ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+			contRepeat = ptrTHW -> count(varKey);
+			if(contRepeat != 0)
+			{
+				ptrComponente = (Componente*) ptrTHW->find(varKey)->second;
+				tipoID = ptrComponente->getTipo(accionHWoPos);
+				POperandos.push(nombreVariable + accionHWoPos);
+				PTipos.push(tipoID);
+			}
+			else
+			{
+				if(varScope == L"Local")
+				{
+					ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+					ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+					ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoID = ptrVariable->getTipo();
+						if(tipoID == 4 || tipoID == 5)
+						{
+							if(vinoPos)
+							{
+								//AQUI ESTA LO QUE SE CAMBIO PARA ARREGLOS----------------------
+								if(!vinoEnt)
+								{
+									ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+									contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+									if(contRepeat != 0)
+									{
+										ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+										arregloTipoID = ptrVariable->getTipo();
+									}
+									else
+									{	
+										if(varScope == L"Local")
+										{
+											ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+											ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+											ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+											contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+											if(contRepeat != 0)
+											{
+												ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+												arregloTipoID = ptrVariable->getTipo();
+											}
+											else
+											{
+												wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+												error();
+											}
+										}
+										else
+										{
+											wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+											error();
+										}
+									}
+
+									if(arregloTipoID != 1)
+									{	
+
+										cout << t->line << L":ERROR!! La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+										error();
+									}
+								}
+								else
+								{
+									arrCasillas = ptrVariable->getNumCasillas();
+									if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+									{
+										cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
+										error();
+									}
+								}
+
+								nombreVariable = nombreVariable + L"[" + accionHWoPos + L"-1]";
 								if(tipoID==4)
 									tipoID = 1;
 								else
 									tipoID = 2;
 							}
+							else
+							{
+								wcout << t->line << ":ERROR!! Debe venir posicion del arreglo" << endl;
+								error();
+							}	
 						}
-						else
-						{
-							wcout << t->line << ":ERROR!! Debe venir posicion del arreglo" << endl;
-							error();
-						
-						}
-												
-					}
-					//wcout << "Se esta a punto de meter el operando ASIGN " << nombreVariable << endl;
-					POperandos.push(nombreVariable);
-					PTipos.push(tipoID);
-					//wcout << "Contenido despues del push de POperandos: " << POperandos.top() << endl;
-					//wcout << "La variable " << nombreVariable << " fue encontrada Global" << endl;
-				}
-				else
-				{
-					ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
-					contRepeat = ptrTHW -> count(varKey);
-					if(contRepeat != 0)
-					{
-						ptrComponente = (Componente*) ptrTHW->find(varKey)->second;
-						tipoID = ptrComponente->getTipo(accionHWoPos);
-						//wcout << "Se esta a punto de meter el operando ASIGN HW " << nombreVariable+accionHWoPos << endl;
-						POperandos.push(nombreVariable + accionHWoPos);
+
+						POperandos.push(nombreVariable);
 						PTipos.push(tipoID);
-						//wcout << "La variable " << nombreVariable << " fue encontrada en HW" << endl;
+
 					}
 					else
 					{
-						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
-						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
-						contRepeat = ptrTVars -> count(varKey);
-						if(contRepeat != 0)
-						{
-							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
-							tipoID = ptrVariable->getTipo();
-							if(tipoID == 4 || tipoID == 5)
-							{
-								arrCasillas = ptrVariable->getNumCasillas();
-								if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
-								{
-									cout << t->line << ":ERROR!! Fuera de los rangos del arreglo!!" << endl;
-									error();
-								}
-								else
-								{
-									nombreVariable = nombreVariable + L"[" + accionHWoPos + L"]";
-									if(tipoID==4)
-										tipoID = 1;
-									else
-										tipoID = 2;
-								}
-							}
-							//wcout << "Se esta a punto de meter el operando ASIGN LOCAL" << nombreVariable << endl;
-							POperandos.push(nombreVariable);
-							PTipos.push(tipoID);
-							//wcout << "La variable " << nombreVariable << " fue encontrada Local" << endl;
-						}
-						else
-						{
-							wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
-							error();
-						}
-					}		
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+						error();
+					}
 				}
-				
-				vinoPos = false;
-			.)
-			ASIGNACION.
+				else
+				{
+					wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+					error();
+				}
+			}	
+		}
+		
+		vinoEnt = false;
+		vinoPos = false;
+	.)ASIGNACION.
+	
 	ASIGNACION = "<-" 
 				(.
 					lastToken = (wstring)t->val;
@@ -2225,7 +2330,7 @@ PRODUCTIONS
 					}
 					else
 					{
-						if(hayFunciones)
+						if(varScope == L"Local")
 						{
 							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
 							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
@@ -2270,26 +2375,79 @@ PRODUCTIONS
 					}						
 				
 			.)
-			["posicion" ENTERO 
+			["posicion" (ENTERO(.vinoEnt = true;.)|ID) 
 			(.
-				lastToken = (wstring)t->val;
-								
+				lastToken = (wstring)t->val;	
+				
 				if(tipoID == 4 || tipoID == 5)
 				{
-					arrCasillas = ptrVariable->getNumCasillas();
-					if(stoi(lastToken) <= arrCasillas && stoi(lastToken) > 0)
-					{					
-					idt = idt + L"[" + lastToken + L"]";
-						
-						if(tipoID==4)
-							tipoID = 1;
+					//--------------------------
+					if(!vinoEnt)
+					{
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(lastToken));
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(wstr_hash(lastToken))->second;
+							arregloTipoID = ptrVariable->getTipo();
+						}
 						else
+						{	
+							if(varScope == L"Local")
+							{
+								ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+								ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+								ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+								contRepeat = ptrTVars -> count(wstr_hash(lastToken));
+								if(contRepeat != 0)
+								{
+									ptrVariable = (Variable*) ptrTVars->find(wstr_hash(lastToken))->second;
+									arregloTipoID = ptrVariable->getTipo();
+								}
+								else
+								{
+									wcout << t->line << L":ERROR!! La variable para indexar el arreglo " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+									error();
+								}
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!! La variable para indexar el arreglo " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+								error();
+							}
+						}
+							
+							
+						if(arregloTipoID != 1)
+						{	
+							cout << t->line << L":ERROR!! La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+							error();
+						}
+						else
+						{
+							idt = idt + L"[" + lastToken + L"-1]";
+							if(tipoID==4)
+							tipoID = 1;
+							else
 							tipoID = 2;
+						}
 					}
 					else
 					{
-						cout << t->line <<":ERROR!!! Fuera del rango del arreglo" << endl;
-						error();
+						arrCasillas = ptrVariable->getNumCasillas();
+						if(stoi(lastToken) <= arrCasillas && stoi(lastToken) > 0)
+						{	
+							idt = idt + L"[" + lastToken + L"-1]";
+							if(tipoID==4)
+								tipoID = 1;
+							else
+								tipoID = 2;
+						}
+						else
+						{
+							cout << t->line <<":ERROR!!! Fuera del rango del arreglo" << endl;
+							error();
+						}
 					}
 				}
 				else
@@ -2297,6 +2455,8 @@ PRODUCTIONS
 					wcout << t->line <<L":ERROR!! La variable " << nombreVariable <<L" no es un arreglo " << endl;
 					error();
 				}
+				
+				vinoEnt = false;
 			.)
 			|
 			(.
