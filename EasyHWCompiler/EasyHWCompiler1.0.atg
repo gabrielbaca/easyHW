@@ -265,7 +265,7 @@ PRODUCTIONS
 
 //....................................................................CONFIGURACION DE HARDWARE.............................................................................
 	EASYHW = (.	
-				//wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
+				wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
 				contCuad = 1; //Contador de cuadruplos
 				llamandoFunc = false;
 				esTipoHW = false;
@@ -298,8 +298,10 @@ PRODUCTIONS
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
 				wofstream archIno;
+				wofstream archVarSetup;
 				wofstream archDef;
 				wofstream archLoop;
+				wofstream archHW;
 				string projName;
 				string pathCarpeta,pathArchivo,runArch;
 				int tipoGlobalVar,tipoLocalVar;
@@ -312,13 +314,15 @@ PRODUCTIONS
 				wstring tipoReal;
 				
 				//Creacion y apertura de los archivos que contendran las partes de la traduccion
+				archVarSetup.open("VarSetup.txt");
 				archDef.open("Def.txt");
-				archLoop.open("Loop.txt");
+				archLoop.open("Loop.txt");	
+				archHW.open("Hardware.txt");
 				
 				//''''''''''''''''''''''''''''''''''''''''''Seccion de Hardware, Variables y Funciones'''''''''''''''''''''''''''''''''''''''''''''
 				//Includes para elementos posibles de Hardware
-				archLoop << L"#include Servo.h" << endl;
-				archLoop << L"#include LiquidCrystal.h" << endl;
+				wcout << L"#include Servo.h" << endl;
+				wcout << L"#include LiquidCrystal.h" << endl;
 				//Declaracion de variables de Hardware
 				/*
 					Tipos de Hardware
@@ -336,7 +340,7 @@ PRODUCTIONS
 					HSERVO = "." "angulo".
 					HBOTON = "." "estado".						
 				*/
-				//cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
+				cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
 				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
 				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
 				{
@@ -414,22 +418,21 @@ PRODUCTIONS
 					switch(tipoComponente)
 					{
 						case 1://MOTOR
-							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);" << endl;
-							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);" << endl;
-							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);"<< endl;
+							archLoop << L"pinMode(" << it->second->getNombre()  << L",OUTPUT);";
+							archLoop << L"pinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);";
+							archLoop << L"pinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);";
 							break;						
 						case 2://SERVO
-							archLoop << L"\t" << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
+							archLoop << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
 							break;						
 						case 3://PANTALLA
-							archLoop << L"\t" << it->second->getNombre() << L".begin(16,2);" << endl;	
-							archLoop << L"\t" << it->second->getNombre() << L".setCursor(0,1);" << endl;	
+							archLoop << it->second->getNombre() << L".begin(16,2);" << endl;	
 							break;
 						case 4://LED
-							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);"<< endl;
+							archLoop << L"pinMode(" << it->second->getNombre()  << L",OUTPUT);";
 							break;
 						case 5://BOTON
-							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",INPUT);"<< endl;
+							archLoop << L"pinMode(" << it->second->getNombre()  << L",INPUT);";
 							break;
 						case 6://SENSOR
 							break;
@@ -443,6 +446,7 @@ PRODUCTIONS
 				//'''''''''''''''''''''''''''''''''''''''''''''''Seccion de LOOP'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				//Funciones
 				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+				ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
 				contListParam = 0;
 				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				
@@ -455,7 +459,6 @@ PRODUCTIONS
 						archLoop << L"void " << funcName << L"(";
 						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
 						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
-						contListParam = 0;
 						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
 						{
 							contListParam++;
@@ -580,7 +583,7 @@ PRODUCTIONS
 									}
 									if(campob == L"imprime")
 									{
-										archLoop << pinb << L".print(" << pinb + campob << L");" << endl;
+										archLoop << pinb << L".print(" << campoa << L");" << endl;
 									}
 									if(campob == L"angulo")
 									{
@@ -1561,7 +1564,7 @@ PRODUCTIONS
 				contCuad++;
 				}
 			.) [FUNC].
-	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL [VARIABLES] "-".
+	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
 	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
