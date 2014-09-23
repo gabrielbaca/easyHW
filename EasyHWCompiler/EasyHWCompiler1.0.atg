@@ -32,7 +32,7 @@ const int cubosem[13][5][5] =
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//=
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<=
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//>=
-{{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 3, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}} // <-
+{{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {3, 3, 3, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}} // <-
 };
 
 
@@ -231,13 +231,14 @@ wstring opdoVM1, opdoVM2, destinationVM, operVM, tempVM;
 list<wstring> *ptrParam;
 wstring tipoPaux, nombrePaux;
 wstring auxOperVM;
+bool hayFunciones;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
 	lm = 'a'..'z'.
 	lM = 'A'..'Z'.
 	dig	= "0123456789".
-	str = ANY.
+	str = lm + lM + dig.
 		
 TOKENS
 	ID = lm{lM|lm|dig}.
@@ -265,13 +266,14 @@ PRODUCTIONS
 
 //....................................................................CONFIGURACION DE HARDWARE.............................................................................
 	EASYHW = (.	
-				wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
+				//wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
 				contCuad = 1; //Contador de cuadruplos
 				llamandoFunc = false;
 				esTipoHW = false;
 				pinCont = 0;
 				contT = 1;
 				vinoPos = false;
+				hayFunciones = false;
 				contParams = 0;
 				contLlFunc = 1;
 				pinesComponente = L"";
@@ -292,16 +294,15 @@ PRODUCTIONS
 			.) 
 			"CONFIG" (.varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" {ENDL} 
 			"VARG" (.varScope = L"Global";.) ENDL "{" ENDL [VARIABLES] "}" {ENDL} 
-			"FUNCIONES" (.varScope = L"Local";.) ENDL "{" ENDL [FUNC] "}"(. llamandoFunc = true;.){ENDL} 
+			"FUNCIONES" (.varScope = L"Local";.) ENDL "{" ENDL [FUNC(.hayFunciones = true;.)] "}"(. llamandoFunc = true;.){ENDL} 
 			"PROGRAMA" BLOQUE
 			(.
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
 				wofstream archIno;
-				wofstream archVarSetup;
 				wofstream archDef;
 				wofstream archLoop;
-				wofstream archHW;
+				wifstream archInDef,archInLoop;
 				string projName;
 				string pathCarpeta,pathArchivo,runArch;
 				int tipoGlobalVar,tipoLocalVar;
@@ -314,15 +315,14 @@ PRODUCTIONS
 				wstring tipoReal;
 				
 				//Creacion y apertura de los archivos que contendran las partes de la traduccion
-				archVarSetup.open("VarSetup.txt");
 				archDef.open("Def.txt");
-				archLoop.open("Loop.txt");	
-				archHW.open("Hardware.txt");
+				archLoop.open("Loop.txt");
 				
 				//''''''''''''''''''''''''''''''''''''''''''Seccion de Hardware, Variables y Funciones'''''''''''''''''''''''''''''''''''''''''''''
 				//Includes para elementos posibles de Hardware
-				wcout << L"#include Servo.h" << endl;
-				wcout << L"#include LiquidCrystal.h" << endl;
+				archLoop << L"#include <Servo.h>" << endl;
+				archLoop << L"#include <LiquidCrystal.h>" << endl;
+				archLoop << L"#include <String.h>" << endl;
 				//Declaracion de variables de Hardware
 				/*
 					Tipos de Hardware
@@ -340,7 +340,7 @@ PRODUCTIONS
 					HSERVO = "." "angulo".
 					HBOTON = "." "estado".						
 				*/
-				cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
+				//cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
 				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
 				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
 				{
@@ -351,31 +351,33 @@ PRODUCTIONS
 						case 1://MOTOR
 							pinesMotor = it->second->getPin();
 							pinesMotor.erase(pinesMotor.begin());
-							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << "=" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << "=" << pinesMotor.substr(0,pinesMotor.find(L" "))<< L";" << endl;
 							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
-							archLoop << L"int " << it->second->getNombre() + L"_fwd =" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_fwd =" << pinesMotor.substr(0,pinesMotor.find(L" ")) << L";" << endl;
 							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
-							archLoop << L"int " << it->second->getNombre() + L"_bwd =" << pinesMotor.substr(0,pinesMotor.length()) << endl;
-							archLoop << L"int " << it->second->getNombre() + L"_velocidad;" << endl;
-							archLoop << L"int " << it->second->getNombre() + L"_direccion;" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_bwd =" << pinesMotor.substr(0,pinesMotor.length()) << L";" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"velocidad;" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"direccion;" << endl;
 							break;						
 						case 2://SERVO
-							archLoop << L"Servo " << it->second->getNombre() << L";" << endl;								
+							archLoop << L"Servo " << it->second->getNombre() << L";" << endl;	
+							archLoop << L"int " << it->second->getNombre() << L"angulo;" << endl;
 							break;						
 						case 3://PANTALLA
-							archLoop << L"LiquidCrystal " << it->second->getNombre() << L"(24,23,22,4,3,2);" << endl;	
+							archLoop << L"LiquidCrystal " << it->second->getNombre() << L"(27,26,25,24,23,22);" << endl;
+							archLoop << L"String " << it->second->getNombre() << L"imprime;" << endl;
 							break;
 						case 4://LED
 							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							archLoop << "int " << it->second->getNombre() + L"_encendido;" << endl;
+							archLoop << "int " << it->second->getNombre() + L"encendido;" << endl;
 							break;
 						case 5://BOTON
 							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							archLoop << "int " << it->second->getNombre() + L"_estado;" << endl;
+							archLoop << "int " << it->second->getNombre() + L"estado;" << endl;
 							break;
 						case 6://SENSOR
 							archLoop << L"int " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							archLoop << traduceTipoReal(tipoComponente) << " " << it->second->getNombre() + L"_lectura;" << endl;
+							archLoop << traduceTipoReal(tipoComponente) << " " << it->second->getNombre() + L"lectura;" << endl;
 							break;
 					}				
 				
@@ -396,7 +398,7 @@ PRODUCTIONS
 							archLoop << L"double " << it->second->getNombre() << L";" << endl;
 							break;
 						case 3:
-							archLoop << L"string " << it->second->getNombre() << L";" << endl;
+							archLoop << L"String " << it->second->getNombre() << L";" << endl;
 							break;
 						case 4:
 							archLoop << L"int " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
@@ -405,8 +407,9 @@ PRODUCTIONS
 							archLoop << L"double " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
 							break;
 					}
-					
-				}				
+										
+				}	
+				archLoop << L"int var_escritura;" << endl;				
 				//'''''''''''''''''''''''''''''''''''''''''''''Seccion de SETUP''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				//wcout << "----------------------Seccion de SETUP----------------------" << endl;
 				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
@@ -418,21 +421,22 @@ PRODUCTIONS
 					switch(tipoComponente)
 					{
 						case 1://MOTOR
-							archLoop << L"pinMode(" << it->second->getNombre()  << L",OUTPUT);";
-							archLoop << L"pinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);";
-							archLoop << L"pinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);";
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);"<< endl;
 							break;						
 						case 2://SERVO
-							archLoop << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
+							archLoop << L"\t" << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
 							break;						
 						case 3://PANTALLA
-							archLoop << it->second->getNombre() << L".begin(16,2);" << endl;	
+							archLoop << L"\t" << it->second->getNombre() << L".begin(16,2);" << endl;	
+							archLoop << L"\t" << it->second->getNombre() << L".setCursor(0,1);" << endl;	
 							break;
 						case 4://LED
-							archLoop << L"pinMode(" << it->second->getNombre()  << L",OUTPUT);";
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);"<< endl;
 							break;
 						case 5://BOTON
-							archLoop << L"pinMode(" << it->second->getNombre()  << L",INPUT);";
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",INPUT);"<< endl;
 							break;
 						case 6://SENSOR
 							break;
@@ -446,10 +450,21 @@ PRODUCTIONS
 				//'''''''''''''''''''''''''''''''''''''''''''''''Seccion de LOOP'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				//Funciones
 				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-				ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
 				contListParam = 0;
 				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-				
+				operVM = tCuadruplos.find(1)->second->getOper();
+				if(operVM == L"IniciaFunc")
+				{}
+				else
+				{
+					archLoop << L"int limites(int num)" << endl; 
+					archLoop << L"{" << endl;
+					archLoop << L"\tif(num<0)"<< endl << L"\tnum = 0;" << endl; // para menor que 0
+					archLoop << L"\telse if(num>255)"<< endl << L"\tnum = 255;" << endl; // para mayor que 255
+					archLoop << L"\treturn(num);" << endl;
+					archLoop << L"}" << endl;
+					archLoop << L"void loop()" << endl << L"{" << endl;
+				}
 				for(int i = 1; i <= tCuadruplos.size(); i++)
 				{
 					operVM = tCuadruplos.find(i)->second->getOper();
@@ -459,6 +474,7 @@ PRODUCTIONS
 						archLoop << L"void " << funcName << L"(";
 						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
 						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						contListParam = 0;
 						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
 						{
 							contListParam++;
@@ -502,7 +518,7 @@ PRODUCTIONS
 						}
 						else
 						{
-							archLoop << L"limites(int num)" << endl; 
+							archLoop << L"int limites(int num)" << endl; 
 							archLoop << L"{" << endl;
 							archLoop << L"\tif(num<0)"<< endl << L"\tnum = 0;" << endl; // para menor que 0
 							archLoop << L"\telse if(num>255)"<< endl << L"\tnum = 255;" << endl; // para mayor que 255
@@ -512,6 +528,13 @@ PRODUCTIONS
 							archLoop << L"void loop()" << endl << L"{" << endl;
 						
 						}
+					}
+					
+					if(L"delay" == operVM)
+					{
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"delay(" << destinationVM << L");"<< endl; 
+					
 					}
 					
 					
@@ -541,17 +564,19 @@ PRODUCTIONS
 							pinb = destinationVM.substr(0,find2);
 							campob = destinationVM.substr(find2 + 1);
 							destinationVM = pinb + campob;
+							if(campob == L"imprime")
+								opdoVM1 = L"(String) " + opdoVM1; 
 							archLoop << L"\t" << destinationVM << L" = " << opdoVM1 << L";" << endl;
 							//----------------Para Analog Write de asignacion-------------------------------------
 									if(campob == L"velocidad")
 									{
-										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
 										archLoop << L"\tanalogWrite(" << pinb << L",var_escritura" << ");" << endl;	
 									}
 									if(campob == L"direccion")
 									{
-										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
-										archLoop << L"\tif( var_escritura = 0)" << endl << "\t{" << endl;
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tif( var_escritura == 0)" << endl << "\t{" << endl;
 										//---Accion---------
 										archLoop << L"\tdigitalWrite(" << pinb + L"_fwd" << L",LOW);" << endl;
 										archLoop << L"\tdigitalWrite(" << pinb + L"_bwd" << L",HIGH);" << endl;
@@ -571,8 +596,8 @@ PRODUCTIONS
 									}
 									if(campob == L"encendido")
 									{
-										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
-										archLoop << L"\tif(var_escritura= 0)" << endl; //Cuando es igual a cero
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tif(var_escritura== 0)" << endl; //Cuando es igual a cero
 										//----Accion-----
 										archLoop << L"digitalWrite(" << pinb << L",LOW);" << endl;
 										//---------------
@@ -583,11 +608,12 @@ PRODUCTIONS
 									}
 									if(campob == L"imprime")
 									{
-										archLoop << pinb << L".print(" << campoa << L");" << endl;
+										archLoop << pinb << L".clear();" << endl;
+										archLoop << pinb << L".print(" << pinb + campob << L");" << endl;
 									}
 									if(campob == L"angulo")
 									{
-										archLoop << L"\tvar_escritura = limites(" << destinationVM << ")" << endl;
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
 										archLoop << L"\tif(var_escritura > 180)" << endl;
 										archLoop << L"\tvar_escritura = 180;" << endl;
 										archLoop << pinb << L"." << L"write(var_escritura);" << endl;
@@ -1098,20 +1124,20 @@ PRODUCTIONS
 							campoa = opdoVM1.substr(find1+1);
 							opdoVM1 = L"\t" + pina + campoa;
 						}
-						archIno << L"\tif(" + opdoVM1 + L")" << endl;
-						archIno << L"\t{" << endl;
+						archLoop << L"\tif(" + opdoVM1 + L")" << endl;
+						archLoop << L"\t{" << endl;
 					}
 					else if(L"finIf" == operVM)
 					{
-						archIno << L"\t}" << endl;
+						archLoop << L"\t}" << endl;
 					}
 					else if(L"inicioElse" == operVM)
 					{
-						archIno << L"\telse" << endl << L"\t{" << endl;
+						archLoop << L"\telse" << endl << L"\t{" << endl;
 					}
 					else if(L"finElse" == operVM)
 					{
-						archIno << L"\t}" << endl;
+						archLoop << L"\t}" << endl;
 					}
 					else if(L"llamaFunc" == operVM)
 					{
@@ -1132,50 +1158,67 @@ PRODUCTIONS
 				}
 				archLoop << L"}";
 				
+
+
+
+
+
+
+
+
+
+
 				
 				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				wcout << L"}" << endl;
+				//wcout << L"}" << endl;
 				//''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''			
-				/*
+				
 				cout << "El numero de cuadruplos generado es " << tCuadruplos.size() << endl;
 				cout << "----------------------Cuadruplos-------------------" << endl;
 				for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
 				{ 	cout << it->first << " ";
 					it->second->muestraCuadruplo();
 				}
-				*/
+				
+								
+				
 				//Cierre de Archivo y Ejecutar IDE de ARDUINO
-				/*cout << "Teclea el nombre del proyecto (Recuerda que sera guardado en la carpeta de Arduino): ";
+				archDef.close();
+				archLoop.close();
+				cout << "COMPILACION EXITOSA!!" << endl;
+				cout << "Teclea el nombre del proyecto (Recuerda que sera guardado en la carpeta de Arduino): ";
 				cin >> projName;
 				pathCarpeta = dirPath + projName;
 				pathArchivo = pathCarpeta + "\\" + projName + ".ino";
 				mkdir(pathCarpeta.c_str());
+				wstring linea;
+				//Juntar todos los archivos para crear el archivo INO
+				
 				archIno.open(pathArchivo);
+				archInDef.open("Def.txt");
+				archInLoop.open("Loop.txt");
+				
+				while(!archInDef.eof())
+				{
+					getline(archInDef,linea);
+					archIno << linea << endl;				
+				}
+				
+				archInDef.close();
+				
+				while(!archInLoop.eof())
+				{
+					getline(archInLoop,linea);
+					archIno << linea << endl;
+				
+				}
+				
+				archInLoop.close();
+												
 				archIno.close();
+				//Correr el IDE de Arduino				
 				runArch = "start " + pathArchivo;
-				system(runArch.c_str());*/
+				system(runArch.c_str());
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			
 			.)EOF.	
@@ -1214,26 +1257,26 @@ PRODUCTIONS
 						HWtype = 3; 
 						typeHW = 3;
 						pantallaOcupada = true;
-						contRepeat = globalPinSet.count(L"24");
-						if(globalPinSet.count(L"24") != 0 || globalPinSet.count(L"23") != 0 || globalPinSet.count(L"22") != 0 || globalPinSet.count(L"4") != 0 || globalPinSet.count(L"3") != 0 || globalPinSet.count(L"2") != 0)
+						//contRepeat = globalPinSet.count(L"24");
+						if(globalPinSet.count(L"27") != 0 || globalPinSet.count(L"26") != 0 || globalPinSet.count(L"25") != 0 || globalPinSet.count(L"24") != 0 || globalPinSet.count(L"23") != 0 || globalPinSet.count(L"22") != 0)
 						{
-							cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 24, 23, 22 4, 3, 2" << 
+							cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 27, 26, 25, 24, 23, 22" << 
 							" si es que planeas utilizar la Pantalla en tu robot" << endl;
 							error();							
 						}
 						else
 						{
+							globalPinSet.insert(L"27");
+							globalPinSet.insert(L"26");
+							globalPinSet.insert(L"25");
 							globalPinSet.insert(L"24");
 							globalPinSet.insert(L"23");
-							globalPinSet.insert(L"22");
-							globalPinSet.insert(L"4");
-							globalPinSet.insert(L"3");
-							globalPinSet.insert(L"2");	
+							globalPinSet.insert(L"22");	
 						}
 					}
 					else
 					{
-						cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 24, 23, 22 4, 3, 2" << 
+						cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 27, 26, 25 24, 23, 22" << 
 						" si es que planeas utilizar la Pantalla en tu robot" << endl;
 						error();
 					}
@@ -1564,12 +1607,13 @@ PRODUCTIONS
 				contCuad++;
 				}
 			.) [FUNC].
-	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
+	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL [VARIABLES] "-".
 	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
-	ESTATUTOS =  ("condicion" CONDICION 
-				| "ciclo"  CICLOS 
+	ESTATUTOS =  (
+				"condicion" CONDICION
+				| "ciclo"  CICLOS
 				| "llamar" LLFUNC ENDL
 				| "asignar"  ASIGN ENDL 
 				| "esperar" ENTERO  
@@ -1578,7 +1622,8 @@ PRODUCTIONS
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"delay", L"", L"", lastToken)));
 					contCuad++;
 				.) ENDL
-				)[ESTATUTOS].
+				)
+				[ESTATUTOS].
 	
 	//----------------------------------------------------------------ESTATUTOS-------------------------------------------------------------------------------
 	//............................................................Seccion de CONDICION........................................................................
@@ -1605,7 +1650,7 @@ PRODUCTIONS
 				(.
 					saltoFalso = PSaltos.top();
 					PSaltos.pop();
-					tCuadruplos.find(saltoFalso)->second->setDestino(to_wstring(contCuad+1));
+					tCuadruplos.find(saltoFalso)->second->setDestino(to_wstring((long double)contCuad+1));
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finIf", L"", L"", L"")));
 					contCuad++;
 					
@@ -1622,7 +1667,7 @@ PRODUCTIONS
 					
 					saltoSino = PSaltos.top();
 					PSaltos.pop();
-					tCuadruplos.find(saltoSino)->second->setDestino(to_wstring(contCuad+1));
+					tCuadruplos.find(saltoSino)->second->setDestino(to_wstring((long double)contCuad+1));
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finElse", L"", L"", L"")));
 					contCuad++;
 				.)
@@ -1658,8 +1703,8 @@ PRODUCTIONS
 				(.
 					finM = PSaltos.top();
 					PSaltos.pop();
-					tCuadruplos.find(finM)->second->setDestino(to_wstring(contCuad));
-					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"regresaM", L"", L"", to_wstring(PSaltos.top()))));
+					tCuadruplos.find(finM)->second->setDestino(to_wstring((long double)contCuad));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"regresaM", L"", L"", to_wstring((long double)PSaltos.top()))));
 					//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
 					PSaltos.pop();
 					contCuad++;
@@ -1818,7 +1863,7 @@ PRODUCTIONS
 					cout << t->line << ":ERROR!! Existen menos argumentos que los que necesita la funcion" << endl;
 					error();
 				}
-				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring(contLlFunc), L"",nombreFuncLl)));
+				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring((long double)contLlFunc), L"",nombreFuncLl)));
 				contCuad++;
 				tLlParametros.insert(pair<int,list<wstring>*>(contLlFunc,ptrListaParametros));
 				contLlFunc++; 
@@ -1941,7 +1986,7 @@ PRODUCTIONS
 					//wcout << "Se agrego " << lastToken << " exitosamente" << endl;
 					
 				.)
-				( EXPRESION | FRASE (.lastToken = (wstring)t->val;POperandos.push(lastToken); PTipos.push(3);.) )  
+				( EXPRESION | FRASE (.lastToken = (wstring)t->val;POperandos.push(lastToken); PTipos.push(3);.))  
 				(.
 				if(POperadores.size() != 0)
 				 {
@@ -2015,7 +2060,7 @@ PRODUCTIONS
 							operando1 = POperandos.top();
 							//wcout << "Se esta a punto de sacar el operando1 EXPRESION" << POperandos.top() << endl;
 							POperandos.pop();
-							strTemp = L"_t" + to_wstring(contT);
+							strTemp = L"_t" + to_wstring((long double)contT);
 							destino = strTemp;
 						    tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
 							//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
@@ -2068,7 +2113,7 @@ PRODUCTIONS
 				   operando1 = POperandos.top();
 				   //wcout << "Se esta a punto de sacar el operando1 EXP " << POperandos.top() << endl;
 				   POperandos.pop();
-				   strTemp = L"_t" + to_wstring(contT);
+				   strTemp = L"_t" + to_wstring((long double)contT);
 				   destino = strTemp;
 				   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
 				   //cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
@@ -2117,7 +2162,7 @@ PRODUCTIONS
 						   operando1 = POperandos.top();
 						   //wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
 						   POperandos.pop();
-						   strTemp = L"_t" + to_wstring(contT);
+						   strTemp = L"_t" + to_wstring((long double)contT);
 						   destino = strTemp;
 						   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
 						   //wcout << "Se esta a punto de meter el operando TERMINO " << destino << endl;
@@ -2180,28 +2225,45 @@ PRODUCTIONS
 					}
 					else
 					{
-						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
-						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
-						contRepeat = ptrTVars -> count(varKey);
-						if(contRepeat != 0)
+						if(hayFunciones)
 						{
-							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
-							tipoID = ptrVariable->getTipo();
-													
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat != 0)
+							{
+								ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+								tipoID = ptrVariable->getTipo();
+														
+							}
+							else
+							{
+								ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+								contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+								if(contRepeat != 0)
+								{
+									esTipoHW = true;
+								}
+								else
+								{
+									wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+								}
+							
+							}
 						}
 						else
 						{
 							ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
-							contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
-							if(contRepeat != 0)
-							{
-								esTipoHW = true;
-							}
-							else
-							{
-								wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
-							}
+								contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+								if(contRepeat != 0)
+								{
+									esTipoHW = true;
+								}
+								else
+								{
+									wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+								}	
 						
 						}
 												
