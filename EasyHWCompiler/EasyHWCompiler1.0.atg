@@ -1,20 +1,114 @@
 #include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string>
 #include <string.h>
+#include <list>
+#include <map>
+#include <set>
+#include <functional>
+#include "Variable.h";
+#include "Componente.h";
 using namespace std;
 
 COMPILER EASYHW
+
+typedef map<int,Variable*> tablaVars;
+typedef map<int,tablaVars*> tablaProcs;
+typedef map<int,Componente*> tablaHardware;
+
+
+//-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
+int cubosem[12][5][5] = 
+{
+{{1,2,13,4,5},{2,2,13,5,5},{13,13,3,13,13},{4,5,13,4,5},{5,5,13,5,5}}, //+
+{{1,2,13,4,5},{2,2,13,5,5},{13,13,13,13,13},{4,5,13,4,5},{5,5,13,5,5}}, //-
+{{1,2,13,4,5},{2,2,13,5,5},{13,13,13,13,13},{4,5,13,4,5},{5,5,13,5,5}}, //*
+{{2,2,13,5,5},{2,2,13,5,5},{13,13,13,13,13},{5,5,13,5,5},{5,5,13,5,5}}, // /
+{{1,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//AND 
+{{1,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//OR 
+{{1,1,13,13,13},{1,1,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//<
+{{1,1,13,13,13},{1,1,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//>
+{{1,1,13,13,13},{1,1,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//!=
+{{1,1,13,13,13},{2,2,13,13,13},{13,13,3,13,13},{13,13,13,4,4},{13,13,13,5,5}},// <-
+{{1,1,13,13,13},{1,1,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}},//<=
+{{1,1,13,13,13},{1,1,13,13,13},{13,13,13,13,13},{13,13,13,13,13},{13,13,13,13,13}}//>=
+}
+
+int buscacubo(wstring operador, int operando1, int operando2)
+{
+  int oper;
+  switch(operador)
+  {
+    case L"+": oper = 101;
+    break;
+	case L"-": oper = 102;
+    break;
+	case L"*": oper = 103;
+    break;
+	case L"/": oper = 104;
+    break;
+	case L"Y": oper = 105;
+    break;
+	case L"O": oper = 106;
+    break;
+	case L"<": oper = 107;
+    break;
+	case L">": oper = 108;
+    break;
+	case L"!=": oper = 109;
+    break;
+	case L"=": oper = 110;
+    break;
+	case L"<=": oper = 111;
+    break;
+	case L">=": oper = 112;
+    break;
+	case L"NO": oper = 113;
+    break;
+  };
+
+   int aprob:
+   aprob = cubosemantico[oper-100][operando1][operando2];
+   return(aprob);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+//-----------------------------------------------------Declaracion de Variables Globales para el Programa-------------------------------------------------------------------
+int myKey,procKey,varKey,hwKey,contRepeat,HWtype,VARtype;
+bool pantallaOcupada;
+wstring nombreProc, nombreVariable, nombreComponente;
+wstring lastToken, nextToken, varScope;
+hash<wstring> wstr_hash;
+tablaVars *ptrTVars;
+tablaProcs *ptrTProcs;
+tablaHardware *ptrTHW;
+Variable *ptrVariable;
+Componente *ptrComponente;
+map<int,void*>::iterator it;
+map<int,void*> tablaScope;
+set<wstring> globalPinSet;
+int direccion;
+list<Cuadruplo*> tcuadruplos;
+stack<wstring> POperadores, POperandos, PSaltos;
+stack<int> PTipos;
+stack<wstring>::iterator itstack;
+int operador, operando1, operando2, destination;
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
 	lm = 'a'..'z'.
 	lM = 'A'..'Z'.
 	dig	= "0123456789".
-	
+	str = ANY.
+		
 TOKENS
 	ID = lm{lM|lm|dig}.
 	ENTERO = dig{dig}.
 	DECIMAL = dig{dig}"."dig{dig}.
-	FRASE = '\"'{dig|lm|lM}'\"'.
+	FRASE = '\"' str '\"'.
 	LETRA = "'"(lm|lM)"'".
 	ENDL = '\n'.
 	HMOTOR = "." ("retraso"|"velocidad"|"direccion").
@@ -23,44 +117,551 @@ TOKENS
 	HPANTALLA = "." "imprime".
 	HSERVO = "." ("angulo"|"rapidez").
 	HBOTON = "." "estado".
+	PINANALOG =  "A"{dig}.
+	
 
 COMMENTS FROM "/*" TO "*/" NESTED
 
 IGNORE '\r'
 
 PRODUCTIONS
-	EASYHW = "CONFIG" ENDL "{" ENDL CONFIGURACION  "}" {ENDL} "VAR" ENDL "{" VARIABLES "}" {ENDL}
-			 "FUNCIONES" ENDL "{" ENDL [FUNCIONES] "}" {ENDL} "PROGRAMA" ENDL BLOQUE (.printf("Fin de Programa Exitoso\n");.) EOF.
-	CONFIGURACION = COMPONENTE ID PUERTOS ENDL [CONFIGURACION].
-	COMPONENTE = "motor" | "servo" | "pantalla" | "led" | "boton" | "sensor".
-	PUERTOS = "pin" ENTERO | ("pines" PINES ).
-	PINES = ENTERO ["," PINES].
-	FUNCIONES = FUNC [FUNCIONES].
-	FUNC = (TIPO | "nada") ID "(" PARAMETROS ")" ENDL BLOQUE.
-	TIPO = "entero" | "decimal" | "letra" | "frase".
-	PARAMETROS = ID ["," PARAMETROS].
-	REPESTATUTOS = ESTATUTOS [REPESTATUTOS].
-	BLOQUE = "{" ENDL [REPESTATUTOS] "}" [ENDL].
-	ESTATUTOS = ASLL | CONDICION | CICLOS .
-	ASLL = ID ((ASIGNACION|LLVOID)| VARHW ASIGNACION).
-	ASIGNACION = "<-" EXPRESION ENDL.
-	EXPRESION = EXP [(">"|"<"|"!="|"=") EXP].
-	EXP = TERMINO [("+"|"-"|"Y"|"O") EXP].
-	TERMINO = FACTOR ["*"|"/"|"NO" TERMINO].
-	FACTOR = "(" EXPRESION ")" | (["-"](CTE|HWRET)).
-	CTE = ENTERO | DECIMAL.
-	HWRET = ID (VARHW | (["posicion" ENTERO | "(" [PARAMETROS] ")"])).
-	VARHW = HMOTOR | HSENSOR | HLED | HPANTALLA | HSERVO | HBOTON.
-	CONDICION = "si" "(" EXPRESION ")" ENDL BLOQUE ["sino" ENDL BLOQUE].
-	CICLOS = MIENTRAS | HAZ .
-	MIENTRAS = "mientras" "(" EXPRESION ")" "haz" ENDL BLOQUE.
-	HAZ = "haz" ENDL BLOQUE "(" ENTERO | (["posicion" ENTERO | "(" [PARAMETROS] ")"]) ")" "veces" ENDL.
-	LLVOID = "(" [PARAMETROS] ")".
-	VARIABLES =  ENDL "VARF" ENDL [DECVAR] "VARG" ENDL DECVAR .
-	DECVAR = DECLARACIONES ENDL [DECVAR].
+
+//-----------------------------------------------------------Seccion de Declaracion de Variables y Funciones----------------------------------------------------------------
+
+//....................................................................CONFIGURACION DE HARDWARE.............................................................................
+	EASYHW = (.	
+				//Seccion para dar de alta los campos Hardware, Global y Local en la tabla de Scopes
+				varScope = L"Hardware";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair<int,void*>(myKey,new tablaHardware));
+				varScope = L"Global";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair<int,void*>(myKey,new tablaVars));
+				varScope = L"Local";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair<int,void*>(myKey,new tablaProcs));
+				//Rellenado del setGlobal de pines para incluir los pines estaticos de la pantalla
+				pantallaOcupada = false;				
+			.) 
+			"CONFIG" (. varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" 
+			(.
+			
+				cout << "Variables Hardware -- " << ptrTHW->size() << endl;
+			
+			.){ENDL} 
+			"VARG" (. varScope = L"Global";.) ENDL "{" ENDL [VARIABLES] "}" 
+			(. 
+			
+				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+				cout << "Variables Globales -- " << ptrTVars->size() << endl;
+			
+			.){ENDL} 
+			"FUNCIONES" (.varScope = L"Local"; .) ENDL "{" ENDL [FUNCIONES] "}"
+			(.
+				
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local"))->second;
+				cout << "Funciones -- " << ptrTProcs->size() << endl;
+			
+			.){ENDL} 
+			"PROGRAMA" BLOQUE EOF.	
+	
+	CONFIGURACION = COMPONENTE ID 
+					(. 
+						nombreComponente = (wstring)t->val;
+						hwKey = wstr_hash(nombreComponente);
+						ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(varScope))->second;
+						contRepeat = ptrTHW->count(hwKey);
+						if(contRepeat == 0)
+						{
+							//Si el id no esta repetido se agrega a la tabla de hardware
+							ptrTHW->insert(pair<int,Componente*>(hwKey,new Componente));
+							ptrComponente = (Componente*)ptrTHW->find(hwKey)->second;
+							ptrComponente->setNombre(nombreComponente);
+						}
+						else
+						{
+							//Si el id ya esta asignado se marca error de variable ya definida
+							wcout << "El componente " << nombreComponente << " ya esta definido" << endl; 
+						}
+					.)
+					[PUERTOS] ENDL [CONFIGURACION].
+					
+	COMPONENTE = "motor" (. HWtype = 1; .) 
+				| "servo"(. HWtype = 1; .) 
+				| "pantalla"
+				(.
+					if(!pantallaOcupada)
+					{
+						HWtype = 3; 
+						pantallaOcupada = true;
+						globalPinSet.insert(L"12");
+						globalPinSet.insert(L"11");
+						globalPinSet.insert(L"5");
+						globalPinSet.insert(L"4");
+						globalPinSet.insert(L"3");
+						globalPinSet.insert(L"2");	
+					}
+					else
+					{
+						cout << "Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 12,11,5,4,3,2" << 
+						" si es que planeas utilizar la Pantalla en tu robot" << endl;
+					}
+				.) 
+				| "led"(. HWtype = 1; .) 
+				| "boton"(. HWtype = 1;.) 
+				| "sensor"(. HWtype = 2; .).
+	PUERTOS = "pin"  (ENTERO|PINANALOG) 
+			(. 
+				//Seccion para asignar los pines a cada componente de HW
+				lastToken = (wstring)t->val;
+				contRepeat = globalPinSet.count(lastToken);
+				if(contRepeat == 0)
+				{
+					globalPinSet.insert(lastToken);
+					ptrComponente->setPin(lastToken);
+				}
+				else
+				{
+					wcout << "El pin " << lastToken << " ya esta siendo utilizado" << endl;
+				}
+				
+			.).
+			
+			
+			
+//....................................................................VARIABLES Y FUNCIONES.................................................................................
+	VARIABLES = DECLARACIONES ENDL [VARIABLES].
 	DECLARACIONES = SIMPLE | ARREGLO.
-	SIMPLE = TIPO ID.
-	ARREGLO = TIPOA ID "espacios" ENTERO.
-	TIPOA = "enteroA" | "decimalA".	
+	SIMPLE = TIPO ID
+			(.
+				nombreVariable = (wstring)t->val;
+				varKey = wstr_hash(nombreVariable);
+				//-----------------------Si nos encontramos en la seccion de declaraciones GLOBALES se hace lo siguiente-------------------------------------------
+				if(varScope == L"Global")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars->count(varKey);
+					if(contRepeat == 0)
+					{
+						
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware"))->second;
+						contRepeat = ptrTHW->count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTVars->insert(pair<int,Variable*>(varKey,new Variable));
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							ptrVariable->setNombre(nombreVariable);
+							ptrVariable->setTipo(VARtype);
+						}
+						else
+						{
+							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+						}					
+					}
+					else
+					{
+						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+					}					
+				}
+				//-----------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente---------------------------------------------
+				else if(varScope == L"Local")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars->count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware"))->second;
+						contRepeat = ptrTHW->count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local"))->second;
+							ptrTVars = (tablaVars*) ptrTProcs->find(procKey)->second;
+							contRepeat = ptrTVars->count(varKey);
+							if(contRepeat == 0)
+							{
+								ptrTVars->insert(pair<int,Variable*>(varKey,new Variable));
+								ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+								ptrVariable->setNombre(nombreVariable);
+								ptrVariable->setTipo(VARtype);
+							}
+							else
+							{
+								wcout << "La variable " << nombreVariable << " ya se encuentra definida en la funcion " << nombreProc << endl;
+							}
+						}
+						else
+						{
+							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+						}					
+					}
+					else
+					{
+						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+					}				
+				}
+			.).
+	ARREGLO = TIPOA ID
+			(.
+				nombreVariable = (wstring)t->val;
+				varKey = wstr_hash(nombreVariable);
+				//---------------Si nos encontramos en la seccion de declaraciones GLOBALES se hace lo siguiente---------------------------------------------
+				if(varScope == L"Global")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars->count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware"))->second;
+						contRepeat = ptrTHW->count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTVars->insert(pair<int,Variable*>(varKey,new Variable));
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							ptrVariable->setNombre(nombreVariable);
+							ptrVariable->setTipo(VARtype);
+						}
+						else
+						{
+							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+						}					
+					}
+					else
+					{
+						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+					}					
+				}
+				//------------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente--------------------------------------
+				else if(varScope == L"Local")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars->count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware"))->second;
+						contRepeat = ptrTHW->count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local"))->second;
+							ptrTVars = (tablaVars*) ptrTProcs->find(procKey)->second;
+							contRepeat = ptrTVars->count(varKey);
+							if(contRepeat == 0)
+							{
+								ptrTVars->insert(pair<int,Variable*>(varKey,new Variable));
+								ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+								ptrVariable->setNombre(nombreVariable);
+								ptrVariable->setTipo(VARtype);
+							}
+							else
+							{
+								wcout << "La variable " << nombreVariable << " ya se encuentra definida en la funcion " << nombreProc << endl;
+							}
+						}
+						else
+						{
+							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+						}					
+					}
+					else
+					{
+						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+					}							
+				}
+			.)
+			"espacios" ENTERO.
+	TIPO = "entero" (.VARtype = 1;.) | "decimal" (.VARtype = 2;.) | "frase" (.VARtype = 3;.).
+	TIPOA = "enteroA" (.VARtype = 4;.) | "decimalA"(.VARtype = 5;.).	
+	ARRPARAM = TIPOA ID
+			(.
+				//PENDIENTE!!!! HASTA SABER COMO PASAR PARAMETROS DE ARREGLOS
+				nombreVariable = (wstring)t->val;				
+			.)
+			"posicion" ENTERO.
+	PARAMETROS =  (SIMPLE | ARRPARAM) ["," PARAMETROS].	
+	FUNCIONES = FUNC [FUNCIONES].
+	FUNC = 	ID 
+			(.
+				//Seccion que agrega a la tabla de procedimientos cada una de las funciones
+				nombreProc = (wstring)t->val;
+				procKey = wstr_hash(nombreProc);
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local"))->second; 		
+				contRepeat = ptrTProcs->count(procKey);
+				if(contRepeat == 0)
+				{
+					ptrTProcs->insert(pair<int,tablaVars*>(procKey,new tablaVars));				
+				}
+				else
+				{
+					wcout << "La funcion " << nombreProc << " ya se encuentra definida" << endl;
+				}
+			.)
+			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE.
+	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
+		
+	
+	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
+	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
+	ESTATUTOS =  ("condicion" CONDICION | "ciclo" CICLOS | "llamar" LLFUNC | "asignar" ASIGN) [ESTATUTOS] .
+	//----------------------------------------------------------------ESTATUTOS-------------------------------------------------------------------------------
+	//............................................................Seccion de CONDICION........................................................................
+	CONDICION = "si" "(" EXPRESION ")" 
+				(.
+					/*
+					aux = pop pila tipos
+					aux dif bool error
+					resul de pila de operandos
+					goto falso resultado ___
+					Push pila de saltos
+					*/
+				
+				.)BLOQUE ["sino"
+				(.
+					/*
+					Generar      goto _______
+					sacar falso de pila-de-saltos
+					rellenar (rellenar falso, cont)
+					PUSH pila-de-saltos (cont - 1)
+					*/
+				.)
+				BLOQUE
+				(.
+					/*
+					Sacar fin de pila-de-saltos
+					rellenar (fin, cont)
+					*/
+				.)
+				].
+	//.........................................................................................................................................................
+	
+	//...............................................................Seccion de CONDICION......................................................................
+	CICLOS = MIENTRAS | HAZ.
+	MIENTRAS = "mientras" 
+				(.
+					/*meter cont en PSaltos*/
+					
+				.)
+				"(" EXPRESION ")" "haz" 
+				(.
+					/*
+					Sacar aux de PTipos
+					SI aux diferente de booleano ENTONCES error semántico.
+					sino
+					Sacar resultado de PilaO
+					Generar    gotofalso   resultado  ______
+					PUSH Psaltos (cont-1)
+					*/
+				.)
+				BLOQUE
+				(.
+					/*
+					Sacar falso de PSaltos. Sacar retorno de PSaltos
+					Generar goto retorno
+					rellenar (falso, cont)
+					*/
+				.).
+	VECES = ENTERO  | ID ["posicion" ENTERO ].
+	HAZ = "haz" "(" VECES ")" "veces" BLOQUE . 
+	//...........................................................................................................................................................
+	
+	//...................................................................LLAMADAS A FUNCIONES....................................................................
+	LLFUNC = ID "(" ")" ENDL.
+	//...........................................................................................................................................................
+	
+	//.....................................................................Seccion de ASIGNACION.................................................................
+	ASIGN =  ID [VARHW] ASIGNACION.
+	ASIGNACION = "<-" 
+				(.
+					POperadores.push(lastTOKEN);
+					// push(=) asignacion
+				.)
+				( EXPRESION | FRASE )  
+				(.
+					if(POperadores.top() == L"<-")
+					{
+						operador = POperadores.top();
+						operandoT2 = PTipos.top();
+						iteval = PTipos.top();
+						iteval = iteval - 1;
+						operandoT1 = *iteval;
+						revTipo = buscaCubo(operador, operandoT1, operandoT2);
+						if(revTipo == 13)
+							//type mismatch
+						else
+						{
+							PTipos.pop(); PTipos.pop();
+							operador = POperadores.pop();
+							operando2 = -1;
+							operando1 = POperandos.pop();
+							destino = ;
+							tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));
+						}
+					}
+				.) 
+				ENDL.
+	//...........................................................................................................................................................
+	
+	//--------------------------------------------------------------------------EXPRESIONES----------------------------------------------------------------------
+	
+	//......................................................................Seccion de EXPRESION.................................................................
+	EXPRESION = EXP 
+				(.
+					switch(POperadores.top())
+					{
+						case L'<':
+						case L'>':
+						case L"<=":
+						case L">=":
+						case L"!=":
+						case L'=':
+						operador = POperadores.top();
+						operando2 = POperandos.top();
+						iteval = POperandos.top();
+						iteval = iteval - 1;
+						operando1 = *iteval;
+						revtipo = buscacubo(operador, operando1, operando2);
+						if(revtipo == 13)
+						{
+							error();	
+						} else
+						{
+							PTipos.pop(); PTipos.pop();
+							operador = POperadores.pop();
+							operando2 = POperandos.pop();
+							operando1 = POperandos.pop();
+							//destino = //reserva de memoria disponible
+							tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, /*destino*/));
+							if(/* op1 o op2 == temp */)
+							{
+							
+							}
+							POperandos.push(/*Temporal*/);
+							PTipos.push(revtipo);
+						}
+						break;
+						default:
+						break;
+					}
+					//igual a mas y menos
+				.)
+				[(">"|"<"|"<="|">="|"!="|"=") 
+				(.
+					POperadores.push(lastTOKEN);
+					/* push de operador */
+				.)
+				EXP].
+	//.............................................................................................................................................................
+	
+	//................................................................Seccion de EXP...............................................................................
+	EXP = TERMINO 
+		(.
+			if(POperadores.top == ("+" | "-" | "Y" | "O")
+			{
+				operador = POperadores.top();
+				operandoT2 = PTipos.Top();
+				iteval = PTipos.top();
+				iteval = iteval - 1;
+				operandoT1 = *iteval;
+				revtipo = buscacubo(operador,operando1,operando2);/*revisar que los tipos sean permitidos*/
+				if (revtipo == 13)
+				{
+				  error();//FALTA type mismatch - Definir error
+				}
+				else
+				{
+				   PTipos.pop(); PTipos.pop();//Sacar los tipos de los operandos de la pila de operandos
+				   operador = POperadores.pop();
+				   operando2 = POperandos.pop();
+				   operando1 = POperandos.pop();
+				   destino = /*reserva de memoria avail*/;
+				   generacuadruplo(operador,operando1,operando2, destino);
+				   if(/*FALTA si op2 o op1 son operadores temporales*/){/*FALTA regresarlos al avail*/}
+				   POperandos.push(/*FALTA Temporal*/);
+				   PTipos.push(revtipo);
+				}
+			}
+		.)
+		[("+"|"-"|"Y"|"O") 
+		(.
+			POperadores.push(lastTOKEN);
+			/*meter operador a POperadores*/
+		.)
+		EXP].
+	//.............................................................................................................................................................
+	
+	//..................................................................Seccion de TERMINO.........................................................................
+	TERMINO = FACTOR 
+			  (.
+				  if(POperadores.top == ("*" | "/" | "NO")
+				   {
+					   operador = POperadores.top();
+					   operandoT2 = PTipos.Top();
+					   iteval = PTipos.top();
+					   iteval = iteval -1;
+					   operandoT1 = *iteval;
+					   revtipo = buscacubo(operador,operando1,operando2);/*revisar que los tipos sean permitidos*/
+					   if (revtipo == 13)
+					   {
+						   error();//FALTA type mismatch - Definir error
+					   }
+					   else
+					   {
+						   PTipos.pop(); PTipos.pop();//Sacar los tipos de los operandos de la pila de operandos
+						   operador = POperadores.pop();
+						   operando2 = POperandos.pop();
+						   operando1 = POperandos.pop();
+						   destino = /*FALTA reserva de memoria avail*/;
+						   generacuadruplo(operador,operando1,operando2, destino);
+						   if(/*FALTA si op2 o op1 son operadores temporales*/){/*FALTA regresarlos al avail*/}
+						   POperandos.push(/*FALTA Temporal*/);
+						   PTipos.push(revtipo);
+						}
+				   }
+			  .)
+			  [("*"|"/"|"NO") 
+			  (.
+					POperadores.push(lastTOKEN);
+					/*meter operador a POperadores*/			  
+			  .)
+			  TERMINO].
+	
+	//.............................................................................................................................................................
+	
+	//...........................................................Seccion de FACTOR.................................................................................
+	FACTOR = "(" 
+			(.
+				 POperadores.push(L"("));/*6 meter fondo falso*/
+			.)
+			EXPRESION ")" 
+			(.
+				POperadores.pop();/*7 sacar fondo falso*/
+			.)
+			| (["-"]CTE
+			(.
+				POperandos.push(lastTOKEN);/*push constante*/			
+			.)
+			| ID 
+			(.
+				idt = lastTOKEN;/*var aux para id*/
+				ttipo = tipo();/*FALTA buscar tipo del id y ponerlo en aux*/
+			.)
+			["posicion" ENTERO 
+			(.
+				/*FALTA ARREGLOS*/
+			.)
+			| VARHW
+			(.
+				ptrTHW = tablaScope.find(wstr_hash(L"hardware"))->second;/*apuntador a la tabla de variables de Hardware*/
+				it = ptrTHW->find(idt);/*encuentra la variable de hardware*/
+				ttipos=it->getTipo(lastTOKEN);/*obtener el tipo del atributo de la variable de HW*/
+				idt=idt + "." + lastTOKEN;/*cambiar tipo de token para que incluya HW*/
+			.)
+			]) 
+			(.
+				POperandos.push(idt); /*Push pila deoperandos*/
+				PTipos.push(ttipos);/*Push pila de tipos*/
+			.)
+			.
+	//.............................................................................................................................................................
+	CTE = ENTERO | DECIMAL.
+	VARHW = HMOTOR | HSENSOR | HLED | HPANTALLA | HSERVO | HBOTON.
 	
 END EASYHW.
