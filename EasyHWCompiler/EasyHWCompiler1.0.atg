@@ -111,6 +111,9 @@ int contCuad;
 int saltoFalso;
 int saltoSino;
 int iteC;
+// Variables para estatutos ciclicos
+int finM;
+int finH;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -200,7 +203,7 @@ PRODUCTIONS
 						else
 						{
 							//Si el id ya esta asignado se marca error de variable ya definida
-							wcout << "El componente " << nombreComponente << " ya esta definido" << endl; 
+							wcout << L"El componente " << nombreComponente << L" ya esta definido" << endl; 
 						}
 					.)
 					[PUERTOS] ENDL [CONFIGURACION].
@@ -229,7 +232,7 @@ PRODUCTIONS
 				| "led" (. HWtype = 1; .) 
 				| "boton" (. HWtype = 1;.) 
 				| "sensor" (. HWtype = 2; .).
-	PUERTOS = "pin"  (ENTERO|PINANALOG) 
+	PUERTOS = "pin"  (ENTERO | PINANALOG) 
 			(. 
 				//Seccion para asignar los pines a cada componente de HW
 				lastToken = (wstring) t -> val;
@@ -241,7 +244,7 @@ PRODUCTIONS
 				}
 				else
 				{
-					wcout << "El pin " << lastToken << " ya esta siendo utilizado" << endl;
+					wcout << L"El pin " << lastToken << L" ya esta siendo utilizado" << endl;
 				}
 				
 			.).
@@ -267,19 +270,19 @@ PRODUCTIONS
 						contRepeat = ptrTHW -> count(varKey);
 						if(contRepeat == 0)
 						{
-							ptrTVars -> insert(pair<int, Variable*>(varKey, new Variable));
+							ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
 							ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
 							ptrVariable -> setNombre(nombreVariable);
 							ptrVariable -> setTipo(VARtype);
 						}
 						else
 						{
-							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
 						}					
 					}
 					else
 					{
-						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
 					}					
 				}
 				//-----------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente---------------------------------------------
@@ -298,24 +301,24 @@ PRODUCTIONS
 							contRepeat = ptrTVars -> count(varKey);
 							if(contRepeat == 0)
 							{
-								ptrTVars -> insert(pair<int, Variable*>(varKey, new Variable));
+								ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
 								ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
 								ptrVariable -> setNombre(nombreVariable);
 								ptrVariable -> setTipo(VARtype);
 							}
 							else
 							{
-								wcout << "La variable " << nombreVariable << " ya se encuentra definida en la funcion " << nombreProc << endl;
+								wcout << L"La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
 							}
 						}
 						else
 						{
-							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
 						}					
 					}
 					else
 					{
-						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
 					}				
 				}
 			.).
@@ -341,12 +344,12 @@ PRODUCTIONS
 						}
 						else
 						{
-							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
 						}					
 					}
 					else
 					{
-						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
 					}					
 				}
 				//------------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente--------------------------------------
@@ -372,17 +375,17 @@ PRODUCTIONS
 							}
 							else
 							{
-								wcout << "La variable " << nombreVariable << " ya se encuentra definida en la funcion " << nombreProc << endl;
+								wcout << L"La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
 							}
 						}
 						else
 						{
-							wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
 						}					
 					}
 					else
 					{
-						wcout << "La variable " << nombreVariable << " ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
 					}							
 				}
 			.)
@@ -392,7 +395,7 @@ PRODUCTIONS
 	ARRPARAM = TIPOA ID
 			(.
 				//PENDIENTE!!!! HASTA SABER COMO PASAR PARAMETROS DE ARREGLOS
-				nombreVariable = (wstring)t -> val;				
+				nombreVariable = (wstring) t -> val;				
 			.)
 			"posicion" ENTERO.
 	PARAMETROS =  (SIMPLE | ARRPARAM) [", " PARAMETROS].	
@@ -410,7 +413,7 @@ PRODUCTIONS
 				}
 				else
 				{
-					wcout << "La funcion " << nombreProc << " ya se encuentra definida" << endl;
+					wcout << L"La funcion " << nombreProc << L" ya se encuentra definida" << endl;
 				}
 			.)
 			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE.
@@ -427,6 +430,7 @@ PRODUCTIONS
 					if(PTipos.pop() != 1)
 					{
 						compilacionExitosa = false;
+						wcout << L"Expresion en la linea " << /*numLinea*/ << L" tiene que ser entera" << endl;
 					}
 					else
 					{
@@ -488,11 +492,10 @@ PRODUCTIONS
 				(.
 					PSaltos.push(contCuad);
 					/*meter cont en PSaltos*/
-					
 				.)
 				"(" EXPRESION ")" "haz" 
 				(.
-					if(PTipos.pop != 1)
+					if(PTipos.pop() != 1)
 					{
 						compilacionExitosa = false;
 						wcout << L"" << endl;
@@ -531,8 +534,38 @@ PRODUCTIONS
 					rellenar (falso, cont)
 					*/
 				.).
-	VECES = ENTERO  | ID.
-	HAZ = "haz" "(" VECES ")" "veces" BLOQUE . 
+	VECES = ENTERO | ID 
+				(.
+					// Corroborar el tipo de ID
+				.).
+	HAZ = 	"haz" "(" VECES 
+				(.
+					varVeces = lastToken;
+					if(buscaTipo() != 1)
+					{
+						compilacionExitosa = false;
+						wcout << L"Tiene que haber un valor entero en el estatuto \"veces\"" << endl;
+					}
+					else
+					{
+						tcuadruplos.push_back(new Cuadruplo(L"HAZ", varVeces, L"", L"");
+						contCuad++;
+					}
+					/*
+					varVeces = lastToken;
+					buscatTipo == (int)
+					*/
+				.) 
+			")" "veces" BLOQUE 
+				(.
+					finH = PSaltos.pop();
+					iteC = tcuadruplos.front();
+					for(int i = 0; i < finH; i++)
+					{
+						iteC++;
+					}
+					*(iteC).setDestino();
+				.). 
 	//...........................................................................................................................................................
 	
 	//...................................................................LLAMADAS A FUNCIONES....................................................................
@@ -555,7 +588,10 @@ PRODUCTIONS
 						destinoT = PTipos.pop();
 						revTipo = buscaCubo(operador, destino, operandoT1);
 						if(revTipo == 13)
-							//type mismatch
+						{
+							compilacionExitosa = false;
+							wcout << L"Tipos no compatibles en la linea " << t ->  << endl; /* Pendiente*/
+						}
 						else
 						{
 						    operando1 = POperandos.pop();
@@ -589,6 +625,7 @@ PRODUCTIONS
 						if(revtipo == 13)
 						{
 							compilacionExitosa = false;	//Type mismatch
+							wcout << L"Tipos no compatibles en la linea " << /* Pendiente */ << endl;
 						} 
 						else
 						{
@@ -622,18 +659,19 @@ PRODUCTIONS
 			{
 				operador = POperadores.pop();
 				operandoT2 = PTipos.pop();
-				operandoT1 = Ptipos.po;
+				operandoT1 = Ptipos.pop;
 				revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
 				if (revtipo == 13)
 				{
-				  error();//FALTA type mismatch - Definir error
+					compilacionExitosa = false;
+					wcout << L"Tipos no compatibles en la linea " << t ->  << endl;
 				}
 				else
 				{
 				   operando2 = POperandos.pop();
 				   operando1 = POperandos.pop();
 				   destino = strTemp;
-				   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
+				   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));
 				   POperandos.push(destino);
 				   PTipos.push(revtipo);
 				   contT++;
@@ -660,7 +698,8 @@ PRODUCTIONS
 					   revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
 					   if (revtipo == 13)
 					   {
-						   error();//FALTA type mismatch - Definir error
+							compilacionExitosa = false;
+							wcout << L"Tipos no compatibles en la linea " << /* Pendiente */ << endl;
 					   }
 					   else
 					   {
@@ -708,7 +747,7 @@ PRODUCTIONS
 			.)
 			| VARHW
 			(.
-				ptrTHW = tablaScope.find(wstr_hash(L"hardware"))->second;/*apuntador a la tabla de variables de Hardware*/
+				ptrTHW = tablaScope.find(wstr_hash(L"hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
 				it = ptrTHW -> find(idt);/*encuentra la variable de hardware*/
 				ttipos = it -> getTipo(lastTOKEN);/*obtener el tipo del atributo de la variable de HW*/
 				idt = idt + "." + lastTOKEN;/*cambiar tipo de token para que incluya HW*/
