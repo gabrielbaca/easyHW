@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdlib.h>
+#include <conio.h>
 #include <stdio.h>
 #include <string>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include "Variable.h";
 #include "Componente.h";
 #include "Cuadruplo.h";
+#include "Parametro.h";
 using namespace std;
 
 //-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
@@ -37,9 +39,12 @@ const int cubosem[13][5][5] =
 
 COMPILER EASYHW
 
+typedef map <wstring,void*> tablaDataFunc;
 typedef map <int, Variable*> tablaVars;
-typedef map <int, tablaVars*> tablaProcs;
+typedef map <int, tablaDataFunc*> tablaProcs;
 typedef map <int, Componente*> tablaHardware;
+typedef list<Parametro*> Parametros;
+
 
 int buscaCubo(wstring op, int opdo1, int opdo2)
 {
@@ -107,25 +112,40 @@ int buscaCubo(wstring op, int opdo1, int opdo2)
    return aprob;
 }
 
+void error()
+{
+	cout << "-----------------------ERRORES DE COMPILACION---------------------------" << endl;
+	_getch();
+	exit(1);	
+}
+
 
 //-----------------------------------------------------Declaracion de Variables Globales para el Programa-------------------------------------------------------------------
 int myKey, procKey, varKey, hwKey, contRepeat, HWtype, VARtype;
 bool pantallaOcupada;
 wstring nombreProc, nombreVariable, nombreComponente;
 wstring lastToken, nextToken, varScope;
-wstring accionHW;
+wstring accionHWoPos;
+wstring nombreFuncLl;
 hash <wstring> wstr_hash;
 tablaVars *ptrTVars;
 tablaProcs *ptrTProcs;
 tablaHardware *ptrTHW;
+tablaDataFunc *ptrTDataF;
 Variable *ptrVariable;
 Componente *ptrComponente;
+Parametros *ptrParametros;
+list<Parametro*>::iterator itParams;
 map <int, void*>::iterator it;
 map <int, void*> tablaScope;
+map <int,list<wstring>*> tLlParametros;
+list<wstring>* ptrListaParametros;
+long double contLlFunc;
 set <wstring> globalPinSet;
 int direccion, revTipo;
+int arrCasillas,dimension;
 map <int,Cuadruplo*> tCuadruplos;
-map<int,Cuadruplo*>::iterator iteC;
+map <int,Cuadruplo*>::iterator iteC;
 stack <wstring> POperadores, POperandos;
 stack <int> PTipos; 
 stack<long double>PSaltos;
@@ -139,7 +159,6 @@ int auxTipo;
 // Variables para crear temporales
 long double contT;
 wstring strTemp;
-bool compilacionExitosa;
 // Variables para estatuto "if"
 long double contCuad;
 long double saltoFalso;
@@ -153,6 +172,14 @@ wstring varVeces;
 int tipoID;
 int destinoT;
 int tipoConstante;
+bool declaredFunc;
+bool llamandoFunc;
+int contParams;
+int tipoParametro;
+int tipoArgumento;
+int typeHW;
+int tipoHW;
+bool seEncontroID;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -187,9 +214,13 @@ PRODUCTIONS
 
 //....................................................................CONFIGURACION DE HARDWARE.............................................................................
 	EASYHW = (.	
-				compilacionExitosa = true;
+				wcout << L"-----------INICIO DE PROGRAMA-----------" << endl;
 				contCuad = 1; //Contador de cuadruplos
+				llamandoFunc = false;
+				seEncontroID = false;
 				contT = 1;
+				contParams = 0;
+				contLlFunc = 1;
 				strTemp =L"t";
 				//Seccion para dar de alta los campos Hardware, Global y Local en la tabla de Scopes
 				varScope = L"Hardware";
@@ -205,44 +236,37 @@ PRODUCTIONS
 				pantallaOcupada = false;			
 				signoEntero = L"";
 			.) 
-			"CONFIG" (.varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" 
+			"CONFIG" (.varScope = L"Hardware"; cout << "-----------SECCION DE CONFIG-----------" << endl;.) ENDL "{" ENDL CONFIGURACION  "}" 
 			(.
 			
 				cout << "Variables Hardware -- " << ptrTHW -> size() << endl;
 			
 			.){ENDL} 
-			"VARG" (.varScope = L"Global";.) ENDL "{" ENDL [VARIABLES] "}" 
+			"VARG" (.varScope = L"Global"; cout << "-----------SECCION DE VARG-----------" << endl;.) ENDL "{" ENDL [VARIABLES] "}" 
 			(. 
 			
 				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
 				cout << "Variables Globales -- " << ptrTVars -> size() << endl;
 			
 			.){ENDL} 
-			"FUNCIONES" (.varScope = L"Local"; .) ENDL "{" ENDL [FUNCIONES] "}"
+			"FUNCIONES" (.varScope = L"Local"; cout << "-----------SECCION DE FUNCIONES-----------" << endl; .) ENDL "{" ENDL [FUNC] "}"
 			(.
 				
 				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
 				cout << "Funciones -- " << ptrTProcs -> size() << endl;
-			
+				llamandoFunc = true;
+				
 			.){ENDL} 
-			"PROGRAMA" BLOQUE
+			"PROGRAMA" (. cout << "-----------INICIO DE MAIN-----------" << endl;.)BLOQUE
 			(.
-				//Seccion Final y Maquina Virtual
-				if(compilacionExitosa)
-				{
-					cout << "El numero de cuadruplos generado es " << tCuadruplos.size() << endl;
-					for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
-						it->second->muestraCuadruplo();
-					cout << "El tamaño de la pila de saltos al final --> " << PSaltos.size() << endl;
-					cout << "El tamaño de la pila de tipos al final --> " << PTipos.size() << endl;
-					cout << "El tamaño de la pila de operadores al final --> " << POperadores.size() << endl;
-					cout << "El tamaño de la pila de operandos al final --> " << POperandos.size() << endl;
-										
+				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				cout << "El numero de cuadruplos generado es " << tCuadruplos.size() << endl;
+				cout << "----------------------Cuadruplos-------------------" << endl;
+				for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
+				{ 	cout << it->first << " ";
+					it->second->muestraCuadruplo();
 				}
-				else
-				{
-					cout << "La compilacion no fue exitosa, verifica errores" << endl;				
-				}
+				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			
 			.)EOF.	
 	
@@ -258,22 +282,25 @@ PRODUCTIONS
 							ptrTHW -> insert(pair <int, Componente*> (hwKey, new Componente));
 							ptrComponente = (Componente*) ptrTHW -> find(hwKey) -> second;
 							ptrComponente -> setNombre(nombreComponente);
+							ptrComponente -> setTipoHW(typeHW);
 						}
 						else
 						{
 							//Si el id ya esta asignado se marca error de variable ya definida
-							wcout << L"El componente " << nombreComponente << L" ya esta definido" << endl; 
+							wcout << t->line << L":ERROR!! El componente " << nombreComponente << L" ya esta definido" << endl; 
+							error();
 						}
 					.)
 					[PUERTOS] ENDL [CONFIGURACION].
 					
-	COMPONENTE = "motor" (.HWtype = 1;.) 
-				| "servo"(.HWtype = 1;.) 
+	COMPONENTE = "motor" (.HWtype = 1; typeHW = 1;.) 
+				| "servo"(.HWtype = 1; typeHW = 2;.) 
 				| "pantalla"
 				(.
 					if(!pantallaOcupada)
 					{
 						HWtype = 3; 
+						typeHW = 3;
 						pantallaOcupada = true;
 						globalPinSet.insert(L"12");
 						globalPinSet.insert(L"11");
@@ -284,13 +311,14 @@ PRODUCTIONS
 					}
 					else
 					{
-						cout << "Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 12, 11, 5, 4, 3, 2" << 
+						cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 12, 11, 5, 4, 3, 2" << 
 						" si es que planeas utilizar la Pantalla en tu robot" << endl;
+						error();
 					}
 				.) 
-				| "led" (. HWtype = 1; .) 
-				| "boton" (. HWtype = 1;.) 
-				| "sensor" (. HWtype = 2; .).
+				| "led" (. HWtype = 1; typeHW = 4; .) 
+				| "boton" (. HWtype = 1; typeHW = 5;.) 
+				| "sensor" (. HWtype = 2; typeHW = 6;.).
 	PUERTOS = "pin"  (ENTERO | PINANALOG) 
 			(. 
 				//Seccion para asignar los pines a cada componente de HW
@@ -303,7 +331,8 @@ PRODUCTIONS
 				}
 				else
 				{
-					wcout << L"El pin " << lastToken << L" ya esta siendo utilizado" << endl;
+					wcout << t->line  <<L":ERROR!! El pin " << lastToken << L" ya esta siendo utilizado" << endl;
+					error();
 				}
 				
 			.).
@@ -334,12 +363,14 @@ PRODUCTIONS
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
 						}					
 					}
 					else
 					{
-						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
 					}					
 				}
 				//-----------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente---------------------------------------------
@@ -354,7 +385,8 @@ PRODUCTIONS
 						if(contRepeat == 0)
 						{
 							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-							ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
 							contRepeat = ptrTVars -> count(varKey);
 							if(contRepeat == 0)
 							{
@@ -365,23 +397,30 @@ PRODUCTIONS
 							}
 							else
 							{
-								wcout << L"La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
 							}
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
 						}					
 					}
 					else
 					{
-						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
 					}				
 				}
 			.).
 	ARREGLO = TIPOA ID
 			(.
 				nombreVariable = (wstring)t -> val;
+			.)
+			"espacios" ENTERO
+			(.
+				dimension = stoi((wstring)t->val);
 				varKey = wstr_hash(nombreVariable);
 				//---------------Si nos encontramos en la seccion de declaraciones GLOBALES se hace lo siguiente---------------------------------------------
 				if(varScope == L"Global")
@@ -398,15 +437,19 @@ PRODUCTIONS
 							ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
 							ptrVariable -> setNombre(nombreVariable);
 							ptrVariable -> setTipo(VARtype);
+							ptrVariable -> setNumCasillas(dimension);
+							cout << "La dimension del arreglo es: " << dimension << endl;
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
 						}					
 					}
 					else
 					{
-						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
 					}					
 				}
 				//------------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente--------------------------------------
@@ -421,7 +464,8 @@ PRODUCTIONS
 						if(contRepeat == 0)
 						{
 							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-							ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
 							contRepeat = ptrTVars -> count(varKey);
 							if(contRepeat == 0)
 							{
@@ -429,30 +473,89 @@ PRODUCTIONS
 								ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
 								ptrVariable -> setNombre(nombreVariable);
 								ptrVariable -> setTipo(VARtype);
+								ptrVariable -> setNumCasillas(dimension);
+								cout << "La dimension del arreglo es: " << dimension << endl;
 							}
 							else
 							{
-								wcout << L"La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
 							}
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
 						}					
 					}
 					else
 					{
-						wcout << L"La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
 					}							
 				}
-			.)
-			"espacios" ENTERO.
+			
+			.).
 	TIPO = "entero" (.VARtype = 1;.) | "decimal" (.VARtype = 2;.) | "frase" (.VARtype = 3;.).
 	TIPOA = "enteroA" (.VARtype = 4;.) | "decimalA"(.VARtype = 5;.).				
-	PARAMETROS =  SIMPLE ["," PARAMETROS].	
-	FUNCIONES = FUNC [FUNCIONES].
+	PARAMETROS =  TIPO ID
+				(.
+					//Seccion modificada para acoplar a que solo acepte parametros de tipo que no sean entero
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+															
+					//Cada parametro es agregado como una variable local a la funcion, y se verifica que no este definida 
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat == 0)
+							{
+								ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
+								ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+								ptrVariable -> setNombre(nombreVariable);
+								ptrVariable -> setTipo(VARtype);
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!!La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
+							}
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}				
+										
+					//Seccion de Codigo Anterior para agregar parametros a la tabla de parametros de cada funcion
+					ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+					ptrParametros->push_back(new Parametro(nombreVariable,VARtype));
+					for(list<Parametro*>::iterator it=ptrParametros->begin();it!=ptrParametros->end();++it)
+					{
+						wcout << "Nombre de Parametro: " << (*it)->getNombre() << endl;
+						wcout << "Tipo de Parametro: " << (*it)->getTipo() << endl;
+					}		
+						
+					
+				.)
+				["," PARAMETROS].	
 	FUNC = 	ID 
-			(.
+			(.	
 				//Seccion que agrega a la tabla de procedimientos cada una de las funciones
 				nombreProc = (wstring)t -> val;
 				procKey = wstr_hash(nombreProc);
@@ -460,20 +563,31 @@ PRODUCTIONS
 				contRepeat = ptrTProcs -> count(procKey);
 				if(contRepeat == 0)
 				{
-					ptrTProcs -> insert(pair<int, tablaVars*>(procKey, new tablaVars));				
+					declaredFunc = false;
+					ptrTProcs -> insert(pair<int, tablaDataFunc*>(procKey, new tablaDataFunc));	
+					ptrTDataF = (tablaDataFunc*)ptrTProcs->find(procKey)->second;
+					ptrTDataF->insert(pair<wstring,void*>(L"fParams",new Parametros));
+					ptrTDataF->insert(pair<wstring,void*>(L"fVars",new tablaVars));
+					cout << "SE AGREGO UNA NUEVA FUNCION A LA TABLA DE PROCEDIMIENTOS" << endl;
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"IniciaFunc",L"",L"",nombreProc)));
+					contCuad++;
 				}
 				else
 				{
-					wcout << L"La funcion " << nombreProc << L" ya se encuentra definida" << endl;
+					declaredFunc = true;
+					wcout << t->line << L":ERROR!! La funcion " << nombreProc << L" ya se encuentra definida" << endl;
+					error();
 				}
 			.)
-			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE.
+			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE 
+			(.
+				if(!declaredFunc)
+				{
+				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"FinFunc",L"",L"",nombreProc)));
+				contCuad++;
+				}
+			.) [FUNC].
 	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
-	
-	
-	
-	
-	
 	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
@@ -490,8 +604,8 @@ PRODUCTIONS
 					if(PTipos.top() != 1)
 					{
 						PTipos.pop();
-						compilacionExitosa = false;
-						wcout << L"Expresion en la linea " << t->line << L" tiene que ser entera" << endl;
+						wcout << t->line << L":ERROR!! Expresion en la linea " << t->line << L" tiene que ser entera" << endl;
+						error();
 					}
 					else
 					{
@@ -500,10 +614,10 @@ PRODUCTIONS
 						POperandos.pop();
 						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"saltoIF", operando1, L"", L"")));
 						wcout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
+						//cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
+						//cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
+						//cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
+						//cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						PSaltos.push(contCuad);
 						contCuad++;
 					}				
@@ -517,10 +631,6 @@ PRODUCTIONS
 				(.
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad++,new Cuadruplo(L"saltoELSE", L"", L"", L"")));
 					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					PSaltos.push(contCuad);
 					contCuad++;					
 				.)
@@ -544,8 +654,8 @@ PRODUCTIONS
 					if(PTipos.top() != 1)
 					{
 						PTipos.pop();
-						compilacionExitosa = false;
-						wcout << L"Expresion en la linea " << t -> line << L" tiene que ser entera" << endl;
+						wcout << t->line << L":ERROR!! Expresion en la linea " << t -> line << L" tiene que ser entera" << endl;
+						error();
 					}
 					else
 					{
@@ -554,10 +664,6 @@ PRODUCTIONS
 						POperandos.pop();
 						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"falsoM", operando1, L"", L"")));
 						cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						PSaltos.push(contCuad);
 						contCuad++;
 					}
@@ -569,10 +675,6 @@ PRODUCTIONS
 					tCuadruplos.find(finM)->second->setDestino(to_wstring(contCuad));
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"regresaM", L"", L"", to_wstring(PSaltos.top()))));
 					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-					cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-					cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-					cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					PSaltos.pop();
 					contCuad++;
 				.).
@@ -593,7 +695,8 @@ PRODUCTIONS
 					else
 					{
 						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
 						contRepeat = ptrTVars -> count(varKey);
 						if(contRepeat != 0)
 						{
@@ -602,7 +705,8 @@ PRODUCTIONS
 						}
 						else
 						{
-							wcout << L"La variable no se encuentra definida en el programa111111" << endl;
+							wcout << t->line << L":ERROR!! La variable no se encuentra definida en el programa" << endl;
+							error();
 						}
 					}							
 										
@@ -613,17 +717,13 @@ PRODUCTIONS
 					varVeces = (wstring)t->val;
 					if(tipoVeces != 1)
 					{
-						compilacionExitosa = false;
-						wcout << L"Tiene que haber un valor entero en el estatuto \"veces\"" << endl;
+						wcout << t->line << L":ERROR!! Tiene que haber un valor entero en el estatuto \"veces\"" << endl;
+						error();
 					}
 					else
 					{
 						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"inicioHAZ", varVeces, L"", L"")));
 						cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-						cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						contCuad++;
 					}
 				.) 
@@ -631,18 +731,97 @@ PRODUCTIONS
 				(.
 					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finHAZ", L"", L"", L"")));
 					cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-					cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 					contCuad++;
 				.). 
 	//...........................................................................................................................................................
 	
 	//...................................................................LLAMADAS A FUNCIONES....................................................................
-	LLFUNC = ID "("[PARAMETROS]")".
-		//FALTA VERIFICAR QUE LA FUNCION EXISTA LOS PARAMETROS CORRESPONDAN EN NUMERO Y EN TIPO
+	LLPARAMETROS = ID
+				(.
+						contParams++;
+						if(contParams > ptrParametros->size())
+						{
+							cout << t->line << ":ERROR!! Hay mas argumentos que los parametros declarados en la funcion" << endl;
+							error();
+						}
+						wcout << "ContParams: " << contParams << endl;
+						nombreVariable = (wstring)t->val;
+						varKey = wstr_hash(nombreVariable);
+						wcout << "Variable parametro: " << nombreVariable << endl;
+						//Necesario para buscar si esta declarada en Globales Nombre de variable 
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(nombreVariable));
+						if(contRepeat != 0)
+						{
+							//Obtener el tipo de la variable global
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							wcout << "El nombre de la variable a la que se les checara el tipo es: " << ptrVariable->getNombre() << endl;
+							tipoParametro = ptrVariable->getTipo();
+							wcout << "El tipo de " << nombreVariable << " es " << tipoParametro << endl;
+							//Comparar con los tipos del mapa de Parametros
+							wcout << "Argumento " << (*itParams)->getNombre() << endl;
+							tipoArgumento = (*itParams)->getTipo();
+							wcout << "Tipo de Argumento: " << tipoArgumento << endl;
+							if(tipoParametro == tipoArgumento)
+							{
+									ptrListaParametros->push_back(nombreVariable);
+									itParams++;
+							}
+							else
+							{
+								cout << t->line << ":ERROR!! El argumento no corresponde con el tipo del parametro" << endl;
+								error();
+							}
+						}
+						else
+						{
+							wcout << t->line << ":ERROR!! El parametro " << nombreVariable << " no esta declarado como variable" << endl;
+							error();
+							
+						}			
+				.) 
+				["," LLPARAMETROS].
 	
+	LLFUNC = ID 
+			(.
+				
+				nombreFuncLl = (wstring)t->val;
+				procKey = wstr_hash(nombreFuncLl);
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second; 		
+				contRepeat = ptrTProcs -> count(procKey);
+				if(contRepeat != 0)
+				{
+					wcout << "Se esta llamando a " << nombreFuncLl << " y si esta definida" << endl;
+					ptrTDataF = (tablaDataFunc*)ptrTProcs->find(procKey)->second;
+					ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+					itParams = ptrParametros->begin();					
+				}
+				else
+				{
+					wcout << t->line << ":ERROR!! La funcion " << nombreFuncLl << " no se encuentra declarada" << endl;
+					error();
+				}
+			.)
+			"("[
+			(.
+				ptrListaParametros = new list<wstring>;
+			.)
+			LLPARAMETROS]")"
+			(.
+				cout << "El numero de parametros de la funcion fue: " << ptrParametros->size() << endl;
+				cout << "El numero de parametros recibido fue: " << contParams << endl;
+				if(contParams != ptrParametros->size())
+				{
+					cout << t->line << ":ERROR!! Existen menos argumentos que los que necesita la funcion" << endl;
+					error();
+				}
+				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring(contLlFunc), L"",nombreFuncLl)));
+				tLlParametros.insert(pair<int,list<wstring>*>(contLlFunc,ptrListaParametros));
+				contLlFunc++; 
+				contParams = 0;
+				
+				
+			.).	
 	//...........................................................................................................................................................
 	
 	//.....................................................................Seccion de ASIGNACION.................................................................
@@ -652,9 +831,9 @@ PRODUCTIONS
 					nombreVariable = (wstring) t -> val;
 					varKey = wstr_hash(nombreVariable);						
 			.)
-			[VARHW]
+			[VARHW | "posicion" ENTERO] 
 			(.
-				accionHW = (wstring) t->val;
+				accionHWoPos = (wstring) t->val;
 				
 				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
 				contRepeat = ptrTVars -> count(varKey);
@@ -662,7 +841,26 @@ PRODUCTIONS
 				{
 					ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
 					tipoID = ptrVariable->getTipo();
-					wcout << "Se esta a punto de meter el operando ASGIN " << nombreVariable << endl;
+					if(tipoID == 4 || tipoID == 5)
+					{
+						arrCasillas = ptrVariable->getNumCasillas();
+						if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+						{
+							cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
+							error();
+						}
+						else
+						{
+							nombreVariable = nombreVariable + L"[" + accionHWoPos + L"]";
+							if(tipoID==4)
+								tipoID = 1;
+							else
+								tipoID = 2;
+						}
+						
+						
+					}
+					wcout << "Se esta a punto de meter el operando ASIGN " << nombreVariable << endl;
 					POperandos.push(nombreVariable);
 					PTipos.push(tipoID);
 					wcout << "Contenido despues del push de POperandos: " << POperandos.top() << endl;
@@ -675,21 +873,39 @@ PRODUCTIONS
 					if(contRepeat != 0)
 					{
 						ptrComponente = (Componente*) ptrTHW->find(varKey)->second;
-						tipoID = ptrComponente->getTipo(accionHW);
-						wcout << "Se esta a punto de meter el operando ASIGN HW " << nombreVariable+accionHW << endl;
-						POperandos.push(nombreVariable + accionHW);
+						tipoID = ptrComponente->getTipo(accionHWoPos);
+						wcout << "Se esta a punto de meter el operando ASIGN HW " << nombreVariable+accionHWoPos << endl;
+						POperandos.push(nombreVariable + accionHWoPos);
 						PTipos.push(tipoID);
 						wcout << "La variable " << nombreVariable << " fue encontrada en HW" << endl;
 					}
 					else
 					{
 						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
 						contRepeat = ptrTVars -> count(varKey);
 						if(contRepeat != 0)
 						{
 							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
 							tipoID = ptrVariable->getTipo();
+							if(tipoID == 4 || tipoID == 5)
+							{
+								arrCasillas = ptrVariable->getNumCasillas();
+								if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+								{
+									cout << t->line << ":ERROR!! Fuera de los rangos del arreglo!!" << endl;
+									error();
+								}
+								else
+								{
+									nombreVariable = nombreVariable + L"[" + accionHWoPos + L"]";
+									if(tipoID==4)
+										tipoID = 1;
+									else
+										tipoID = 2;
+								}
+							}
 							wcout << "Se esta a punto de meter el operando ASIGN LOCAL" << nombreVariable << endl;
 							POperandos.push(nombreVariable);
 							PTipos.push(tipoID);
@@ -697,7 +913,8 @@ PRODUCTIONS
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << " no se encuentra definida" << endl;
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+							error();
 						}
 					}		
 				}
@@ -732,8 +949,8 @@ PRODUCTIONS
 						revTipo = buscaCubo(operador, destinoT, operandoT1);
 						if(revTipo == 13)
 						{
-							compilacionExitosa = false;
-							wcout << L"Tipos no compatibles en la linea " << t ->line  << endl;
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t ->line  << endl;
+							error();
 						}
 						else
 						{
@@ -746,11 +963,7 @@ PRODUCTIONS
 							operando2 = L"";
 							tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
 							cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-							cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-							cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-							cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-							cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
-							contCuad++;//Faltaba este contCuad++, no estoy seguro de si va
+							contCuad++;
 						}
 					}
 				}
@@ -779,8 +992,8 @@ PRODUCTIONS
 						revTipo = buscaCubo(operador, operandoT1, operandoT2);
 						if(revTipo == 13)
 						{
-							compilacionExitosa = false;	//Type mismatch
-							wcout << L"Tipos no compatibles en la linea " << t -> line << endl;
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t -> line << endl;
+							error();
 						} 
 						else
 						{
@@ -794,10 +1007,6 @@ PRODUCTIONS
 							destino = strTemp;
 						    tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
 							cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-							cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						    cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						    cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						    cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 							wcout << "Se esta a punto de meter el operando EXPRESION " << destino << endl;
 						    POperandos.push(destino);
 						    PTipos.push(revTipo);
@@ -837,8 +1046,8 @@ PRODUCTIONS
 				cout << "El tipo resulantes de Opdo1 y Opd2 es: " << revTipo << endl;
 				if (revTipo == 13)
 				{
-					compilacionExitosa = false;
-					wcout << L"Tipos no compatibles en la linea " << t->line  << endl;
+					wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t->line  << endl;
+					error();
 				}
 				else
 				{
@@ -852,17 +1061,9 @@ PRODUCTIONS
 				   destino = strTemp;
 				   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
 				   cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-				   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-				   cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-				   cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-				   cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 				   wcout << "Se esta a punto de meter el operando EXP" << destino << endl;
 				   POperandos.push(destino);
 				   PTipos.push(revTipo);
-				   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-				   cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-				   cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-				   cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 				   contCuad++;
 				   contT++;
 				}
@@ -894,8 +1095,8 @@ PRODUCTIONS
 					   revTipo = buscaCubo(operador, operandoT1, operandoT2); /*revisar que los tipos sean permitidos*/
 					   if (revTipo == 13)
 					   {
-							compilacionExitosa = false;
-							wcout << L"Tipos no compatibles en la linea " << t->line << endl;
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t->line << endl;
+							error();
 					   }
 					   else
 					   {
@@ -908,11 +1109,6 @@ PRODUCTIONS
 						   strTemp = L"t" + to_wstring(contT);
 						   destino = strTemp;
 						   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
-						   cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
-						   cout << "El tamaño de la pila de saltos actual --> " << PSaltos.size() << endl;
-						cout << "El tamaño de la pila de tipos actual --> " << PTipos.size() << endl;
-						cout << "El tamaño de la pila de operadores actual --> " << POperadores.size() << endl;
-						cout << "El tamaño de la pila de operandos actual --> " << POperandos.size() << endl;
 						   wcout << "Se esta a punto de meter el operando TERMINO " << destino << endl;
 						   POperandos.push(destino);
 						   PTipos.push(revTipo);
@@ -971,54 +1167,74 @@ PRODUCTIONS
 						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
 						tipoID = ptrVariable->getTipo();	
 						wcout << "El tipo de la variable global es: " << tipoID << endl;
+						seEncontroID = true;
 						
 					}
 					else
 					{
 						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
 						contRepeat = ptrTVars -> count(varKey);
 						if(contRepeat != 0)
 						{
 							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
 							tipoID = ptrVariable->getTipo();
+							seEncontroID = true;
 							
 						}
 						else
 						{
-							wcout << L"La variable " << nombreVariable << " no se encuentra definida en el programa" << endl;
+							ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+							ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+							contRepeat = ptrComponente->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+							if(contRepeat != 0)
+							{
+								seEncontroID = true;
+							}
+							else
+							{
+								cout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+							}
+						
 						}
+												
 					}						
 				
 			.)
 			["posicion" ENTERO 
 			(.
 				lastToken = (wstring)t->val;
-				//CHECAR SI LASTTOKEN ES MENOR O IGUAL QUE EL NUMERO DE CASILLAS DEFINIDAS EN LA DECLARACION
-				//if(lastToken > NUMERODECASILLAS)
-				//{
-				//cout << "Error la posicion excede el numero de casillas" << endl;
+								
 				if(tipoID == 4 || tipoID == 5)
 				{
-						idt = idt + L"[" + lastToken + L"]";
+					arrCasillas = ptrVariable->getNumCasillas();
+					if(stoi(lastToken) <= arrCasillas && stoi(lastToken) > 0)
+					{					
+					idt = idt + L"[" + lastToken + L"]";
 						
 						if(tipoID==4)
 							tipoID = 1;
 						else
 							tipoID = 2;
+					}
+					else
+					{
+						cout << t->line <<":ERROR!!! Fuera del rango del arreglo" << endl;
+						error();
+					}
 				}
 				else
 				{
-					
-					compilacionExitosa = false;
-					wcout << "Error!! La variable declarada no es un arreglo " << endl;
+					wcout << t->line <<":ERROR!! La variable declarada no es un arreglo " << endl;
+					error();
 				}
 			.)
 			| VARHW
 			(.
 				lastToken = (wstring)t->val;
 				
-				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
 				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
 				tipoID = ptrComponente->getTipo(lastToken);/*obtener el tipo del atributo de la variable de HW*/
 				idt = idt + lastToken;/*cambiar tipo de token para que incluya HW*/
@@ -1030,10 +1246,81 @@ PRODUCTIONS
 				wcout << "El top de POperandos en FACTOR es: " << POperandos.top();
 				PTipos.push(tipoID);/*Push pila de tipos*/
 				wcout << "El top de PTipos en FACTOR es: " << PTipos.top();
+				seEncontroID = false;
 				
 			.).
 	//.............................................................................................................................................................
 	CTE = ENTERO (.tipoConstante = 1;.) | DECIMAL (.tipoConstante = 2;.).
-	VARHW = HMOTOR | HSENSOR | HLED | HPANTALLA | HSERVO | HBOTON.
+	VARHW = HMOTOR 
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 1)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+				
+				
+			.) 
+		   | HSENSOR
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 6)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+			.) 
+		   | HLED
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 4)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+			
+			.) 
+		   | HPANTALLA
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 3)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+			
+			.) 
+		   | HSERVO
+		   (.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 2)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+		   .) 
+		   | HBOTON
+		   (.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 5)
+				{
+					cout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+		   
+		   .).
 	
 END EASYHW.
