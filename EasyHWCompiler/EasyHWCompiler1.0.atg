@@ -18,6 +18,7 @@ typedef map <int, tablaVars*> tablaProcs;
 typedef map <int, Componente*> tablaHardware;
 
 
+
 //-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
 int cubosem[12][5][5] = 
 {
@@ -96,8 +97,20 @@ stack <wstring> POperadores, POperandos, PSaltos;
 stack <int> PTipos;
 stack <wstring>::iterator itstack;
 wstring operador, operando1, operando2, destino;
-wstring idt;
+wstring idt; // ID temporal
+// Variables 
 int operandoT1, operandoT2;
+// Temporal para el estatuto "while"
+int auxTipo;
+// Variables para crear temporales
+int contT;
+wstring strTemp;
+bool compilacionExitosa;
+// Variables para estatuto "if"
+int contCuad;
+int saltoFalso;
+int saltoSino;
+int iteC;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -132,6 +145,10 @@ PRODUCTIONS
 
 //....................................................................CONFIGURACION DE HARDWARE.............................................................................
 	EASYHW = (.	
+				compilacionExitosa = true;
+				contCuad = 1; //Contador de cuadruplos
+				contT = 1;
+				strTemp =L"t";
 				//Seccion para dar de alta los campos Hardware, Global y Local en la tabla de Scopes
 				varScope = L"Hardware";
 				myKey = wstr_hash(varScope);
@@ -407,9 +424,21 @@ PRODUCTIONS
 	//............................................................Seccion de CONDICION........................................................................
 	CONDICION = "si" "(" EXPRESION ")" 
 				(.
+					if(PTipos.pop() != 1)
+					{
+						compilacionExitosa = false;
+					}
+					else
+					{
+						operando1 = POperandos.pop();
+						operando2 = "";
+						tcuadruplos.push_back(new Cuadruplo(L"saltoIF", operando1, L"", L"");
+						PSaltos.push(contCuad);
+						contCuad++;
+					}
 					/*
-					aux = pop pila tipos
-					aux dif bool error
+					aux = PTipos.pop()
+					if(aux <> int) compilacionExitosa = false;
 					resul de pila de operandos
 					goto falso resultado ___
 					Push pila de saltos
@@ -417,6 +446,16 @@ PRODUCTIONS
 				
 				.)BLOQUE ["sino"
 				(.
+					saltoFalso = PSaltos.pop();
+					iteC = tcuadruplos.front();
+					for(int i = 0; i < saltoFalso; i++)
+					{
+						iteC++;
+					}
+					*(iteC).setDestino(contCuad);
+					tcuadruplos.push_back(new Cuadruplo (L"saltoELSE", L"", L"", L"");
+					PSaltos.push(contCuad);
+					contCuad++;					
 					/*
 					Generar      goto _______
 					sacar falso de pila-de-saltos
@@ -426,6 +465,15 @@ PRODUCTIONS
 				.)
 				BLOQUE
 				(.
+					saltoSino = PSaltos.pop();
+					iteC = tcuadruplos.front();
+					for(int i = 0; i < saltoSino; i++)
+					{
+						iteC++;
+					}
+					*(iteC).setDestino(contCuad);
+					tcuadruplos.push_back(new Cuadruplo (L"FinM", L"", L"", PSaltos.pop());
+					contCuad++;
 					/*
 					Sacar fin de pila-de-saltos
 					rellenar (fin, cont)
@@ -438,29 +486,52 @@ PRODUCTIONS
 	CICLOS = MIENTRAS | HAZ.
 	MIENTRAS = "mientras" 
 				(.
+					PSaltos.push(contCuad);
 					/*meter cont en PSaltos*/
 					
 				.)
 				"(" EXPRESION ")" "haz" 
 				(.
+					if(PTipos.pop != 1)
+					{
+						compilacionExitosa = false;
+						wcout << L"" << endl;
+					}
+					else
+					{
+						operando1 = POperandos.pop();
+						tcuadruplos.push_back(new Cuadruplo (L"inicioM", operando1, L"", L"");
+						PSaltos.push(contCuad);
+						contCuad++;
+					}
 					/*
+					inicioM finM
 					Sacar aux de PTipos
-					SI aux diferente de booleano ENTONCES error semántico.
-					sino
-					Sacar resultado de PilaO
+					if(aux <> bool) compilacionExitosa = true;
+					else{
+					Sacar resultado de PilaOperandos
 					Generar    gotofalso   resultado  ______
 					PUSH Psaltos (cont-1)
+					}
 					*/
 				.)
 				BLOQUE
 				(.
+					finM = PSaltos.pop();
+					iteC = tcuadruplos.front();
+					for(int i = 0; i < finM; i++)
+					{
+						iteC++;
+					}
+					*(iteC).setDestino
 					/*
-					Sacar falso de PSaltos. Sacar retorno de PSaltos
+					Sacar falso de PSaltos. 
+					Sacar retorno de PSaltos
 					Generar goto retorno
 					rellenar (falso, cont)
 					*/
 				.).
-	VECES = ENTERO  | ID ["posicion" ENTERO ].
+	VECES = ENTERO  | ID.
 	HAZ = "haz" "(" VECES ")" "veces" BLOQUE . 
 	//...........................................................................................................................................................
 	
@@ -479,21 +550,18 @@ PRODUCTIONS
 				(.
 					if(POperadores.top() == L"<-")
 					{
-						operador = POperadores.top();
-						operandoT2 = PTipos.top();
-						itstack = PTipos.top();
-						itstack = itstack - 1;
-						operandoT1 = *itstack;
-						revTipo = buscaCubo(operador, operandoT1, operandoT2);
+						operador = POperadores.pop(); //son ints
+						operandoT1 = PTipos.pop();
+						destinoT = PTipos.pop();
+						revTipo = buscaCubo(operador, destino, operandoT1);
 						if(revTipo == 13)
 							//type mismatch
 						else
 						{
-							PTipos.pop(); PTipos.pop();
-							operador = POperadores.pop();
-							operando2 = -1;
-							operando1 = POperandos.pop();
-							destino = ;
+						    operando1 = POperandos.pop();
+							destino = POperandos.pop();
+							operando2 = "";
+							PTipos.push(revtipo);
 							tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));
 						}
 					}
@@ -514,29 +582,24 @@ PRODUCTIONS
 						case L">=":
 						case L"!=":
 						case L'=':
-						operador = POperadores.top();
-						operando2 = POperandos.top();
-						itstack = POperandos.top();
-						itstack = itstack - 1;
-						operando1 = *itstack;
-						revtipo = buscaCubo(operador, operando1, operando2);
+						operador = POperadores.pop();
+						operandoT2 = PTipos.pop();
+						operandoT1 = PTipos.pop();
+						revtipo = buscaCubo(operador, operandoT1, operandoT2);
 						if(revtipo == 13)
 						{
-							error();	
-						} else
+							compilacionExitosa = false;	//Type mismatch
+						} 
+						else
 						{
-							PTipos.pop(); PTipos.pop();
-							operador = POperadores.pop();
 							operando2 = POperandos.pop();
 							operando1 = POperandos.pop();
-							//destino = //reserva de memoria disponible
-							tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, /*destino*/));
-							if(/* op1 o op2 == temp */)
-							{
-							
-							}
-							POperandos.push(/*Temporal*/);
-							PTipos.push(revtipo);
+							destino = strTemp;
+						    tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
+						    POperandos.push(destino);
+						    PTipos.push(revtipo);
+						    contT++;
+						    strTemp = L"t" + to_wstring(contT);
 						}
 						break;
 						default:
@@ -557,27 +620,24 @@ PRODUCTIONS
 		(.
 			if(POperadores.top == ("+" | "-" | "Y" | "O")
 			{
-				operador = POperadores.top();
-				operandoT2 = PTipos.Top();
-				itstack = PTipos.top();
-				itstack = itstack - 1;
-				operandoT1 = *itstack;
-				revtipo = buscaCubo(operador, operando1, operando2);/*revisar que los tipos sean permitidos*/
+				operador = POperadores.pop();
+				operandoT2 = PTipos.pop();
+				operandoT1 = Ptipos.po;
+				revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
 				if (revtipo == 13)
 				{
 				  error();//FALTA type mismatch - Definir error
 				}
 				else
 				{
-				   PTipos.pop(); PTipos.pop();//Sacar los tipos de los operandos de la pila de operandos
-				   operador = POperadores.pop();
 				   operando2 = POperandos.pop();
 				   operando1 = POperandos.pop();
-				   destino = /*reserva de memoria avail*/;
-				   generacuadruplo(operador, operando1, operando2, destino);
-				   if(/*FALTA si op2 o op1 son operadores temporales*/){/*FALTA regresarlos al avail*/}
-				   POperandos.push(/*FALTA Temporal*/);
+				   destino = strTemp;
+				   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
+				   POperandos.push(destino);
 				   PTipos.push(revtipo);
+				   contT++;
+				   strTemp = L"t" + to_wstring(contT);
 				}
 			}
 		.)
@@ -594,27 +654,24 @@ PRODUCTIONS
 			  (.
 				  if(POperadores.top == ("*" | "/" | "NO")
 				   {
-					   operador = POperadores.top();
-					   operandoT2 = PTipos.Top();
-					   itstack = PTipos.top();
-					   itstack = itstack -1;
-					   operandoT1 = *itstack;
-					   revtipo = buscaCubo(operador, operando1, operando2);/*revisar que los tipos sean permitidos*/
+					   operador = POperadores.pop();
+					   operandoT2 = PTipos.pop();
+					   operandoT1 = PTipos.pop();
+					   revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
 					   if (revtipo == 13)
 					   {
 						   error();//FALTA type mismatch - Definir error
 					   }
 					   else
 					   {
-						   PTipos.pop(); PTipos.pop();//Sacar los tipos de los operandos de la pila de operandos
-						   operador = POperadores.pop();
 						   operando2 = POperandos.pop();
 						   operando1 = POperandos.pop();
-						   destino = /*FALTA reserva de memoria avail*/;
-						   generacuadruplo(operador, operando1, operando2, destino);
-						   if(/*FALTA si op2 o op1 son operadores temporales*/){/*FALTA regresarlos al avail*/}
-						   POperandos.push(/*FALTA Temporal*/);
+						   destino = strTemp;
+						   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
+						   POperandos.push(destino);
 						   PTipos.push(revtipo);
+						   contT++;
+						   strTemp = L"t" + to_wstring(contT);
 						}
 				   }
 			  .)
