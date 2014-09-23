@@ -1,0 +1,26 @@
+CONFIG
+{
+pantalla p1
+}
+
+VARG
+{
+entero x
+}
+
+FUNCIONES
+{
+}
+
+PROGRAMA
+{
+condicion si(x = 1)
+{
+asignar p1.imprime <- "Hola"
+}
+sino
+{
+asignar p1.imprime <- "Adios"
+}
+esperar 1000
+}

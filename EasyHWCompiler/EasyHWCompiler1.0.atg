@@ -1,0 +1,2618 @@
+#include <iostream>
+#include <stdlib.h>
+#include <conio.h>
+#include <stdio.h>
+#include <string>
+#include <string.h>
+#include <list>
+#include <map>
+#include <set>
+#include <functional>
+#include <fstream>
+#include <direct.h>
+#include "Variable.h"
+#include "Componente.h"
+#include "Cuadruplo.h"
+#include "Parametro.h"
+using namespace std;
+
+//-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
+
+const int cubosem[13][5][5] = 
+{
+{{1, 2, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 3/*Checar*/, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //+
+{{1, 2, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //-
+{{1, 2, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //*
+{{2, 2, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, // /
+{{1, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //AND 
+{{1, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //OR 
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //>
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //!=
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//=
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<=
+{{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}},//>=
+{{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {3, 3, 3, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}} // <-
+};
+
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+COMPILER EASYHW
+
+typedef map <wstring,void*> tablaDataFunc;
+typedef map <int, Variable*> tablaVars;
+typedef map <int, tablaDataFunc*> tablaProcs;
+typedef map <int, Componente*> tablaHardware;
+typedef list<Parametro*> Parametros;
+
+
+int buscaCubo(wstring op, int opdo1, int opdo2)
+{
+  int oper;
+  int aprob;
+  
+  if(op == L"+")
+  {
+	oper = 1;
+  }
+  else if (op == L"-")
+  {
+	oper = 2;
+  }
+  else if (op == L"*")
+  {
+	oper = 3;
+  }
+  else if (op == L"/")
+  {
+	oper = 4;
+  }
+  else if (op == L"Y")
+  {
+	oper = 5;
+  }
+  else if (op == L"O")
+  {
+	oper = 6;
+  }
+  else if (op == L"<")
+  {
+	oper = 7;
+  }
+  else if (op == L">")
+  {
+	oper = 8;
+  }
+  else if (op == L"!=")
+  {
+	oper = 9;
+  }
+  else if (op == L"=")
+  {
+	oper = 10;
+  }
+  else if (op == L"<=")
+  {
+	oper = 11;
+  }
+  else if (op == L">=")
+  {
+	oper = 12;
+  }
+  else if (op == L"<-")
+  {
+	oper = 13;
+  } 
+
+   aprob = cubosem[oper-1][opdo1-1][opdo2-1];
+   return aprob;
+}
+
+void error()
+{
+	cout << "-----------------------ERRORES DE COMPILACION---------------------------" << endl;
+	_getch();
+	exit(1);	
+}
+
+wstring traduceTipoReal(int type)
+{
+	wstring tipoReal;
+	switch(type)
+	{
+		case 1:
+		case 4:
+		case 5:
+			tipoReal = L"int";
+			break;
+		case 6:
+			tipoReal = L"double";
+			break;
+	}
+	
+	return tipoReal;
+}
+
+wstring traduceTipoParametro(int type)
+{
+	wstring tipoP;
+	
+	switch(type)
+	{
+		case 1:
+			tipoP = L"int";
+			break;
+		case 2:
+			tipoP = L"double";
+			break;
+		case 3:
+			tipoP = L"string";
+			break;
+	}
+	
+	return tipoP;
+}
+
+
+//-----------------------------------------------------Declaracion de Variables Globales para el Programa-------------------------------------------------------------------
+int myKey, procKey, varKey, hwKey, contRepeat, HWtype, VARtype;
+bool pantallaOcupada;
+wstring nombreProc, nombreVariable, nombreComponente;
+wstring lastToken, nextToken, varScope;
+wstring accionHWoPos;
+wstring nombreFuncLl;
+hash <wstring> wstr_hash;
+tablaVars *ptrTVars;
+tablaProcs *ptrTProcs;
+tablaHardware *ptrTHW;
+tablaDataFunc *ptrTDataF;
+Variable *ptrVariable;
+Componente *ptrComponente;
+Parametros *ptrParametros;
+list<Parametro*>::iterator itParams;
+map <int, void*>::iterator it;
+map <int, void*> tablaScope;
+map <int,list<wstring>*> tLlParametros;
+list<wstring>* ptrListaParametros;
+int contLlFunc;
+set <wstring> globalPinSet;
+int direccion, revTipo;
+int arrCasillas,dimension;
+map <int,Cuadruplo*> tCuadruplos;
+map <int,Cuadruplo*>::iterator iteC;
+stack <wstring> POperadores, POperandos;
+stack <int> PTipos; 
+stack<int>PSaltos;
+wstring operador, operando1, operando2, destino;
+wstring idt; // ID temporal
+wstring signoEntero;
+// Variables 
+int operandoT1, operandoT2;
+// Temporal para el estatuto "while"
+int auxTipo;
+// Variables para crear temporales
+int contT;
+wstring strTemp;
+// Variables para estatuto "if"
+int contCuad;
+int saltoFalso;
+int saltoSino;
+// Variables para estatutos ciclicos
+int finM;
+int finH;
+int tipoVeces;
+wstring varVeces;
+//Variables para Expresiones
+int tipoID;
+int destinoT;
+int tipoConstante;
+bool declaredFunc;
+bool llamandoFunc;
+int contParams;
+int tipoParametro;
+int tipoArgumento;
+int typeHW;
+int tipoHW;
+bool esTipoHW;
+bool vinoPos;
+int pinCont;
+wstring pinesComponente;
+//Variables utilizadas para la maquina virtual
+string dirPath;
+wstring pina, pinb, campoa, campob;
+int find1, find2;
+wstring opdoVM1, opdoVM2, destinationVM, operVM, tempVM;
+list<wstring> *ptrParam;
+wstring tipoPaux, nombrePaux;
+wstring auxOperVM;
+bool hayFunciones,vinoEnt,arregloTipoID,vienenParametros,encontreParam;
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHARACTERS
+	lm = 'a'..'z'.
+	lM = 'A'..'Z'.
+	dig	= "0123456789".
+	str = lm + lM + dig + " ".
+		
+TOKENS
+	ID = lm{lM|lm|dig}.
+	ENTERO = dig{dig}.
+	DECIMAL = dig{dig}"."dig{dig}.
+	FRASE = '\"' {str} '\"'.
+	LETRA = "'"(lm|lM)"'".
+	ENDL = '\n'.
+	HMOTOR = "." ("velocidad"|"direccion").
+	HSENSOR = "." "lectura".
+	HLED = "." "encendido".
+	HPANTALLA = "." "imprime".
+	HSERVO = "." "angulo".
+	HBOTON = "." "estado".
+	PINANALOG =  "A"{dig}.
+	
+
+COMMENTS FROM "/*" TO "*/" NESTED
+
+IGNORE '\r'
+
+PRODUCTIONS
+
+//-----------------------------------------------------------Seccion de Declaracion de Variables y Funciones----------------------------------------------------------------
+
+//....................................................................CONFIGURACION DE HARDWARE.............................................................................
+	EASYHW = (.	
+				//wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
+				contCuad = 1; //Contador de cuadruplos
+				llamandoFunc = false;
+				esTipoHW = false;
+				pinCont = 0;
+				contT = 1;
+				vinoPos = false;
+				vinoEnt = false;
+				arregloTipoID = false;
+				vienenParametros = false;
+				encontreParam = false;
+				hayFunciones = false;
+				contParams = 0;
+				contLlFunc = 1;
+				pinesComponente = L"";
+				strTemp =L"_t";
+				//Seccion para dar de alta los campos Hardware, Global y Local en la tabla de Scopes
+				varScope = L"Hardware";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair <int, void*> (myKey, new tablaHardware));
+				varScope = L"Global";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair <int, void*> (myKey, new tablaVars));
+				varScope = L"Local";
+				myKey = wstr_hash(varScope);
+				tablaScope.insert(pair <int, void*> (myKey, new tablaProcs));
+				//Rellenado del setGlobal de pines para incluir los pines estaticos de la pantalla
+				pantallaOcupada = false;			
+				signoEntero = L"";
+			.) 
+			"CONFIG" (.varScope = L"Hardware";.) ENDL "{" ENDL CONFIGURACION  "}" {ENDL} 
+			"VARG" (.varScope = L"Global";.) ENDL "{" ENDL [VARIABLES] "}" {ENDL} 
+			"FUNCIONES" (.varScope = L"Local";.) ENDL "{" ENDL [FUNC(.hayFunciones = true;.)] "}"(. llamandoFunc = true;.){ENDL} 
+			"PROGRAMA" (.varScope = L"main";.) BLOQUE
+			(.
+				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
+				wofstream archIno;
+				wofstream archDef;
+				wofstream archLoop;
+				wifstream archInDef,archInLoop;
+				string projName;
+				string pathCarpeta,pathArchivo,runArch;
+				int tipoGlobalVar,tipoLocalVar;
+				int tipoComponente;
+				int posEspacioNew,posEspacioOld;
+				int typePar;
+				int contListParam;
+				wstring pinesMotor;
+				wstring funcName;
+				wstring tipoReal;
+				
+				//Creacion y apertura de los archivos que contendran las partes de la traduccion
+				archDef.open("Def.txt");
+				archLoop.open("Loop.txt");
+				
+				//''''''''''''''''''''''''''''''''''''''''''Seccion de Hardware, Variables y Funciones'''''''''''''''''''''''''''''''''''''''''''''
+				//Includes para elementos posibles de Hardware
+				archLoop << L"#include <Servo.h>" << endl;
+				archLoop << L"#include <LiquidCrystal.h>" << endl;
+				archLoop << L"#include <String.h>" << endl;
+				//Declaracion de variables de Hardware
+				/*
+					Tipos de Hardware
+					-Motor 1
+					-Servo 2
+					-Pantalla 3
+					-LED 4
+					-Boton 5
+					-Sensor 6			
+
+					HMOTOR = "." ("velocidad"|"direccion").
+					HSENSOR = "." "lectura".
+					HLED = "." "encendido".
+					HPANTALLA = "." "imprime".
+					HSERVO = "." "angulo".
+					HBOTON = "." "estado".						
+				*/
+				//cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
+				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
+				{
+					tipoComponente = it->second->getTipoHW();
+					//cout << tipoComponente << endl;
+					switch(tipoComponente)
+					{
+						case 1://MOTOR
+							pinesMotor = it->second->getPin();
+							pinesMotor.erase(pinesMotor.begin());
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << "=" << pinesMotor.substr(0,pinesMotor.find(L" "))<< L";" << endl;
+							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
+							archLoop << L"int " << it->second->getNombre() + L"_fwd =" << pinesMotor.substr(0,pinesMotor.find(L" ")) << L";" << endl;
+							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
+							archLoop << L"int " << it->second->getNombre() + L"_bwd =" << pinesMotor.substr(0,pinesMotor.length()) << L";" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"velocidad;" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"direccion;" << endl;
+							break;						
+						case 2://SERVO
+							archLoop << L"Servo " << it->second->getNombre() << L";" << endl;	
+							archLoop << L"int " << it->second->getNombre() << L"angulo;" << endl;
+							break;						
+						case 3://PANTALLA
+							archLoop << L"LiquidCrystal " << it->second->getNombre() << L"(27,26,25,24,23,22);" << endl;
+							archLoop << L"String " << it->second->getNombre() << L"imprime;" << endl;
+							break;
+						case 4://LED
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << "int " << it->second->getNombre() + L"encendido;" << endl;
+							break;
+						case 5://BOTON
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << "int " << it->second->getNombre() + L"estado;" << endl;
+							break;
+						case 6://SENSOR
+							archLoop << L"int " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << traduceTipoReal(tipoComponente) << " " << it->second->getNombre() + L"lectura;" << endl;
+							break;
+					}				
+				
+				}
+								
+				//Variables Globales
+				//cout << "----------------Seccion de Variables Globales-----------------------"<< endl;
+				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+				for(tablaVars::iterator it = ptrTVars->begin();it != ptrTVars->end();it++)
+				{
+					tipoGlobalVar = it->second->getTipo();
+					switch(tipoGlobalVar)
+					{
+						case 1:
+							archLoop << L"int " << it->second->getNombre() << L";" << endl;
+							break;
+						case 2:
+							archLoop << L"double " << it->second->getNombre() << L";" << endl;
+							break;
+						case 3:
+							archLoop << L"String " << it->second->getNombre() << L";" << endl;
+							break;
+						case 4:
+							archLoop << L"int " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+							break;												
+						case 5:
+							archLoop << L"double " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+							break;
+					}
+										
+				}	
+				archLoop << L"int var_escritura;" << endl;				
+				//'''''''''''''''''''''''''''''''''''''''''''''Seccion de SETUP''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+				//wcout << "----------------------Seccion de SETUP----------------------" << endl;
+				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+				archLoop << L"void setup()" << endl << L"{" << endl;
+				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
+				{
+					tipoComponente = it->second->getTipoHW();
+					//cout << tipoComponente << endl;
+					switch(tipoComponente)
+					{
+						case 1://MOTOR
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);"<< endl;
+							break;						
+						case 2://SERVO
+							archLoop << L"\t" << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
+							break;						
+						case 3://PANTALLA
+							archLoop << L"\t" << it->second->getNombre() << L".begin(16,2);" << endl;	
+							archLoop << L"\t" << it->second->getNombre() << L".setCursor(0,1);" << endl;	
+							break;
+						case 4://LED
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);"<< endl;
+							break;
+						case 5://BOTON
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",INPUT);"<< endl;
+							break;
+						case 6://SENSOR
+							break;
+					}				
+				
+				}				
+								
+				archLoop << L"}" << endl;
+				//''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+				
+				//'''''''''''''''''''''''''''''''''''''''''''''''Seccion de LOOP'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+				//Funciones
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+				contListParam = 0;
+				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+				operVM = tCuadruplos.find(1)->second->getOper();
+				if(operVM == L"IniciaFunc")
+				{}
+				else
+				{
+					archLoop << L"int limites(int num)" << endl; 
+					archLoop << L"{" << endl;
+					archLoop << L"\tif(num<0)"<< endl << L"\tnum = 0;" << endl; // para menor que 0
+					archLoop << L"\telse if(num>255)"<< endl << L"\tnum = 255;" << endl; // para mayor que 255
+					archLoop << L"\treturn(num);" << endl;
+					archLoop << L"}" << endl;
+					archLoop << L"void loop()" << endl << L"{" << endl;
+				}
+				for(int i = 1; i <= tCuadruplos.size(); i++)
+				{
+					operVM = tCuadruplos.find(i)->second->getOper();
+					if(operVM == L"IniciaFunc")
+					{
+						funcName = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"void " << funcName << L"(";
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
+						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						contListParam = 0;
+						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
+						{
+							contListParam++;
+							typePar = (*itP)->getTipo();
+							archLoop <<  traduceTipoParametro(typePar) << L" " << (*itP)->getNombre();
+							if(contListParam != ptrParametros->size())
+								archLoop<< L", ";	
+						}
+						archLoop << L")" << endl << L"{" << endl;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+						for(tablaVars::iterator it = ptrTVars->begin();it != ptrTVars->end();it++)
+						{
+							tipoLocalVar = it->second->getTipo();
+							switch(tipoLocalVar)
+							{
+								case 1:
+									archLoop << L"\tint " << it->second->getNombre() << L";" << endl;
+									break;
+								case 2:
+									archLoop << L"\tdouble " << it->second->getNombre() << L";" << endl;
+									break;
+								case 3:
+									archLoop << L"\tstring " << it->second->getNombre() << L";" << endl;
+									break;
+								case 4:
+									archLoop << L"\tint " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+									break;												
+								case 5:
+									archLoop << L"\tdouble " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+									break;
+							}	
+						}						
+					}
+					
+					if(operVM == L"FinFunc")
+					{
+						archLoop << L"}" << endl;
+						auxOperVM = tCuadruplos.find(i+1)->second->getOper(); 
+						if(auxOperVM == L"IniciaFunc")
+						{
+						}
+						else
+						{
+							archLoop << L"int limites(int num)" << endl; 
+							archLoop << L"{" << endl;
+							archLoop << L"\tif(num<0)"<< endl << L"\tnum = 0;" << endl; // para menor que 0
+							archLoop << L"\telse if(num>255)"<< endl << L"\tnum = 255;" << endl; // para mayor que 255
+							archLoop << L"\treturn(num);" << endl;
+							archLoop << L"}" << endl;
+							
+							archLoop << L"void loop()" << endl << L"{" << endl;
+						
+						}
+					}
+					
+					if(L"delay" == operVM)
+					{
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"delay(" << destinationVM << L");"<< endl; 
+					
+					}
+					
+					
+					if(L"<-" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						find2 = destinationVM.find(L".");
+						if(find2 != -1)
+						{							
+							pinb = destinationVM.substr(0,find2);
+							campob = destinationVM.substr(find2 + 1);
+							destinationVM = pinb + campob;
+							if(campob == L"imprime")
+								opdoVM1 = L"(String) " + opdoVM1; 
+							archLoop << L"\t" << destinationVM << L" = " << opdoVM1 << L";" << endl;
+							//----------------Para Analog Write de asignacion-------------------------------------
+									if(campob == L"velocidad")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tanalogWrite(" << pinb << L",var_escritura" << ");" << endl;	
+									}
+									if(campob == L"direccion")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tif( var_escritura == 0)" << endl << "\t{" << endl;
+										//---Accion---------
+										archLoop << L"\tdigitalWrite(" << pinb + L"_fwd" << L",LOW);" << endl;
+										archLoop << L"\tdigitalWrite(" << pinb + L"_bwd" << L",HIGH);" << endl;
+										archLoop << "\t}" << endl;
+										//------------------
+										archLoop << "\telse" << endl << "\t{" << endl; //Cuando es mayor a cero
+										//----Accion--------
+										archLoop << L"\tdigitalWrite(" << pinb + L"_fwd" << L",HIGH);" << endl;
+										archLoop << L"\tdigitalWrite(" << pinb + L"_bwd" << L",LOW);" << endl;
+										//------------------		
+										archLoop << "\t}" << endl;
+									}
+									if(campob == L"estado")
+									{
+										cout << "ERROR!!No puedes escribir en un pin de entrada" << endl;
+										error();
+									}
+									if(campob == L"encendido")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tif(var_escritura== 0)" << endl; //Cuando es igual a cero
+										//----Accion-----
+										archLoop << L"digitalWrite(" << pinb << L",LOW);" << endl;
+										//---------------
+										archLoop << L"else" << endl; //Cuando es mayor a cero
+										//----Accion------
+										archLoop << L"digitalWrite(" << pinb << L",HIGH);" << endl;
+										//----------------
+									}
+									if(campob == L"imprime")
+									{
+										archLoop << pinb << L".clear();" << endl;
+										archLoop << pinb << L".print(" << pinb + campob << L");" << endl;
+									}
+									if(campob == L"angulo")
+									{
+										archLoop << L"\tvar_escritura = limites(" << destinationVM << ");" << endl;
+										archLoop << L"\tif(var_escritura > 180)" << endl;
+										archLoop << L"\tvar_escritura = 180;" << endl;
+										archLoop << pinb << L"." << L"write(var_escritura);" << endl;
+									}
+									if(campob == L"lectura" )
+									{
+										cout << "No puedes escribir en un pin de entrada" << endl;
+										error();
+									}
+							//-------------------------------------------------------------------
+						}
+						else
+						{
+							archLoop << L"\t" << destinationVM << L" = " << opdoVM1 << L";" << endl;
+						}
+					} 
+					else if(L"<" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" < " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L">" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" > " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"<=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" < " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L">=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" >= " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"=" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" == " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"+" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" + " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"-" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" - " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"Y" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" && " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					}
+					else if(L"O" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" || " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"*" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" * " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					else if(L"/" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						opdoVM2 = tCuadruplos.find(i)->second->getOp2();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						find1 = opdoVM1.find(L".");
+						find2 = opdoVM2.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						if(find2 != -1)
+						{
+							pinb = opdoVM2.substr(0, find2);
+							campob = opdoVM2.substr(find2 + 1);
+							if(campob == L"velocidad" || campob == L"direccion" || campob == L"angulo" || campob == L"encendido" || campob == L"estado"
+							|| campob == L"imprime" || campob == L"lectura")
+							{
+								if(campob == L"estado")
+									opdoVM2 =  L"digitalRead(" + pinb + L")";
+								else if(campob == L"lectura")
+									opdoVM2 =  L"analogRead(" + pinb + L")";
+								else 
+									opdoVM2 = L"\t" + pinb + campob;
+							}
+						}
+						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" / " + opdoVM2 + L")";
+						archDef << tempVM << endl;
+					} 
+					
+					else if(L"falsoM" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0, find1);
+							campoa = opdoVM1.substr(find1 + 1);
+							if(campoa == L"velocidad" || campoa == L"direccion" || campoa == L"angulo" || campoa == L"encendido" || campoa == L"estado"
+							|| campoa == L"imprime" || campoa == L"lectura")
+							{
+								if(campoa == L"estado")
+									opdoVM1 =  L"digitalRead(" + pina + L")";
+								else if(campoa == L"lectura")
+									opdoVM1 =  L"analogRead(" + pina + L")";
+								else 
+									opdoVM1 = L"\t" + pina + campoa;
+							}
+						}
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						tempVM = L"while(" + opdoVM1 + L")";
+						archLoop << L"\t" << tempVM << endl << L"\t{" << endl;
+					} 
+					else if(L"regresaM" == operVM)
+					{
+						archLoop  <<  L"\t}" << endl;
+					} 
+					else if(L"inicioHAZ" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						tempVM = L"\tfor(int i = 0; i < " + opdoVM1 + L"; i++)";
+						archLoop << tempVM << endl << L"\t{"<< endl;
+					} 
+					else if(L"finHAZ" == operVM)
+					{
+						archLoop << L"\t}" << endl;
+					} 
+					else if(L"inicioIf" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						find1 = opdoVM1.find(L".");
+						if(find1 != -1)
+						{
+							pina = opdoVM1.substr(0,find1-1);
+							campoa = opdoVM1.substr(find1+1);
+							opdoVM1 = L"\t" + pina + campoa;
+						}
+						archLoop << L"\tif(" + opdoVM1 + L")" << endl;
+						archLoop << L"\t{" << endl;
+					}
+					else if(L"finIf" == operVM)
+					{
+						archLoop << L"\t}" << endl;
+					}
+					else if(L"inicioElse" == operVM)
+					{
+						archLoop << L"\telse" << endl << L"\t{" << endl;
+					}
+					else if(L"finElse" == operVM)
+					{
+						archLoop << L"\t}" << endl;
+					}
+					else if(L"llamaFunc" == operVM)
+					{
+						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
+						destinationVM = tCuadruplos.find(i)->second->getDestino();
+						archLoop << L"\t" <<destinationVM << L"(";
+						if(opdoVM1 != L"0")
+						{
+							ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
+							//if(!(ptrParam->size() == 0))
+							//{
+								for(int f = 1; f < ptrParam->size(); f++)
+								{
+									ptrParam = tLlParametros.find(stoi(opdoVM1))->second;
+									nombrePaux = ptrParam->front();
+									ptrParam->pop_front();
+									archLoop << nombrePaux << L",";
+								}
+								nombrePaux = ptrParam->front();
+							//}
+						}
+						archLoop << nombrePaux << L");" << endl;
+					}
+				}
+				archLoop << L"}";
+				
+
+
+
+
+
+
+
+
+
+
+				
+				
+				//wcout << L"}" << endl;
+				//''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''			
+				
+				cout << "El numero de cuadruplos generado es " << tCuadruplos.size() << endl;
+				cout << "----------------------Cuadruplos-------------------" << endl;
+				for(map<int,Cuadruplo*>::iterator it=tCuadruplos.begin();it!=tCuadruplos.end();++it)
+				{ 	cout << it->first << " ";
+					it->second->muestraCuadruplo();
+				}
+				
+								
+				
+				//Cierre de Archivo y Ejecutar IDE de ARDUINO
+				archDef.close();
+				archLoop.close();
+				cout << "COMPILACION EXITOSA!!" << endl;
+				cout << "Teclea el nombre del proyecto (Recuerda que sera guardado en la carpeta de Arduino): ";
+				cin >> projName;
+				pathCarpeta = dirPath + projName;
+				pathArchivo = pathCarpeta + "\\" + projName + ".ino";
+				mkdir(pathCarpeta.c_str());
+				wstring linea;
+				//Juntar todos los archivos para crear el archivo INO
+				
+				archIno.open(pathArchivo);
+				archInDef.open("Def.txt");
+				archInLoop.open("Loop.txt");
+				
+				while(!archInDef.eof())
+				{
+					getline(archInDef,linea);
+					archIno << linea << endl;				
+				}
+				
+				archInDef.close();
+				
+				while(!archInLoop.eof())
+				{
+					getline(archInLoop,linea);
+					archIno << linea << endl;
+				
+				}
+				
+				archInLoop.close();
+												
+				archIno.close();
+				//Correr el IDE de Arduino				
+				runArch = "start " + pathArchivo;
+				system(runArch.c_str());
+				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			
+			.)EOF.	
+	
+	CONFIGURACION = COMPONENTE ID 
+					(. 
+						nombreComponente = (wstring) t -> val;
+						hwKey = wstr_hash(nombreComponente);
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(varScope)) -> second;
+						contRepeat = ptrTHW -> count(hwKey);
+						if(contRepeat == 0)
+						{
+							//Si el id no esta repetido se agrega a la tabla de hardware
+							ptrTHW -> insert(pair <int, Componente*> (hwKey, new Componente));
+							ptrComponente = (Componente*) ptrTHW -> find(hwKey) -> second;
+							ptrComponente -> setNombre(nombreComponente);
+							ptrComponente -> setTipoHW(typeHW);
+						}
+						else
+						{
+							//Si el id ya esta asignado se marca error de variable ya definida
+							wcout << t->line << L":ERROR!! El componente " << nombreComponente << L" ya esta definido" << endl; 
+							error();
+						}
+					.)
+					[PUERTOS] (.pinCont = 0;.)
+					
+					ENDL [CONFIGURACION].
+					
+	COMPONENTE = "motor" (.HWtype = 1; typeHW = 1;.) 
+				| "servo"(.HWtype = 1; typeHW = 2;.) 
+				| "pantalla"
+				(.
+					if(!pantallaOcupada)
+					{
+						HWtype = 3; 
+						typeHW = 3;
+						pantallaOcupada = true;
+						//contRepeat = globalPinSet.count(L"24");
+						if(globalPinSet.count(L"27") != 0 || globalPinSet.count(L"26") != 0 || globalPinSet.count(L"25") != 0 || globalPinSet.count(L"24") != 0 || globalPinSet.count(L"23") != 0 || globalPinSet.count(L"22") != 0)
+						{
+							cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 27, 26, 25, 24, 23, 22" << 
+							" si es que planeas utilizar la Pantalla en tu robot" << endl;
+							error();							
+						}
+						else
+						{
+							globalPinSet.insert(L"27");
+							globalPinSet.insert(L"26");
+							globalPinSet.insert(L"25");
+							globalPinSet.insert(L"24");
+							globalPinSet.insert(L"23");
+							globalPinSet.insert(L"22");	
+						}
+					}
+					else
+					{
+						cout << t->line << ":ERROR!! Recuerda que solo puedes utilizar una Pantalla, y que no puedes hacer uso de los pines 27, 26, 25 24, 23, 22" << 
+						" si es que planeas utilizar la Pantalla en tu robot" << endl;
+						error();
+					}
+				.) 
+				| "led" (. HWtype = 1; typeHW = 4; .) 
+				| "boton" (. HWtype = 1; typeHW = 5;.) 
+				| "sensor" (. HWtype = 2; typeHW = 6;.).
+	
+	NUMPIN = (ENTERO|PINANALOG)
+			(. 
+				pinCont++;
+				//Seccion para asignar los pines a cada componente de HW
+				lastToken = (wstring) t -> val;
+				contRepeat = globalPinSet.count(lastToken);
+				if(contRepeat == 0)
+				{
+					globalPinSet.insert(lastToken);
+					
+					if(typeHW != 1)
+					{
+						ptrComponente -> setPin(lastToken);
+					}
+					else
+					{
+						ptrComponente -> setPin( pinesComponente + L" " + lastToken);
+						pinesComponente = ptrComponente->getPin();
+					}
+				}
+				else
+				{
+					wcout << t->line  <<L":ERROR!! El pin " << lastToken << L" ya esta siendo utilizado" << endl;
+					error();
+				}				
+			.) 
+			["," NUMPIN].
+			
+	PUERTOS = "pin" NUMPIN 
+			(.
+				pinesComponente = L"";
+				switch(typeHW)
+				{
+					case 1:
+						if(pinCont != 3)
+						{
+							wcout << t->line << L":ERROR!! Un motor no puede tener ni mas ni menos de 3 pins" << endl;
+							error();
+						}
+						break;	
+					case 2:
+						if(pinCont != 1)
+						{
+							wcout << t->line << L":ERROR!! Un Servo no puede tener mas de 1 pin" << endl;
+							error();
+						}
+						break;
+					case 4:
+						if(pinCont != 1)
+						{
+							wcout << t->line << L":ERROR!! Un LED no puede tener mas de 1 pin" << endl;
+							error();
+						}
+						break;
+					case 5:
+						if(pinCont != 1)
+						{
+							wcout << t->line << L":ERROR!! Un Boton no puede tener mas de 1 pin" << endl;
+							error();
+						}
+						break;
+					case 6:
+						if(pinCont != 1)
+						{
+							wcout << t->line << L":ERROR!! Un Sensor no puede tener mas de 1 pin" << endl;
+							error();
+						}
+						break;
+				}				
+									
+			.).
+						
+//....................................................................VARIABLES Y FUNCIONES.................................................................................
+	VARIABLES = DECLARACIONES ENDL [VARIABLES].
+	DECLARACIONES = SIMPLE | ARREGLO.
+	SIMPLE = TIPO ID
+			(.
+				nombreVariable = (wstring) t -> val;
+				varKey = wstr_hash(nombreVariable);
+				//-----------------------Si nos encontramos en la seccion de declaraciones GLOBALES se hace lo siguiente-------------------------------------------
+				if(varScope == L"Global")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
+							ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+							ptrVariable -> setNombre(nombreVariable);
+							ptrVariable -> setTipo(VARtype);
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}					
+				}
+				//-----------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente---------------------------------------------
+				else if(varScope == L"Local")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat == 0)
+							{
+								ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
+								ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+								ptrVariable -> setNombre(nombreVariable);
+								ptrVariable -> setTipo(VARtype);
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
+							}
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}				
+				}
+			.).
+	ARREGLO = TIPOA ID
+			(.
+				nombreVariable = (wstring)t -> val;
+			.)
+			"espacios" ENTERO
+			(.
+				dimension = stoi((wstring)t->val);
+				varKey = wstr_hash(nombreVariable);
+				//---------------Si nos encontramos en la seccion de declaraciones GLOBALES se hace lo siguiente---------------------------------------------
+				if(varScope == L"Global")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTVars -> insert(pair<int, Variable*>(varKey, new Variable));
+							ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+							ptrVariable -> setNombre(nombreVariable);
+							ptrVariable -> setTipo(VARtype);
+							ptrVariable -> setNumCasillas(dimension);
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}					
+				}
+				//------------------------Si nos encontramos en la seccion de declaraciones LOCALES se hace lo siguiente--------------------------------------
+				else if(varScope == L"Local")
+				{
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat == 0)
+							{
+								ptrTVars -> insert(pair<int, Variable*>(varKey, new Variable));
+								ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+								ptrVariable -> setNombre(nombreVariable);
+								ptrVariable -> setTipo(VARtype);
+								ptrVariable -> setNumCasillas(dimension);
+								//cout << "La dimension del arreglo es: " << dimension << endl;
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
+							}
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}							
+				}
+			
+			.).
+	TIPO = "entero" (.VARtype = 1;.) | "decimal" (.VARtype = 2;.) | "frase" (.VARtype = 3;.).
+	TIPOA = "enteroA" (.VARtype = 4;.) | "decimalA"(.VARtype = 5;.).				
+	PARAMETROS =  TIPO ID
+				(.
+					//Seccion modificada para acoplar a que solo acepte parametros de tipo que no sean entero
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+															
+					//Cada parametro es agregado como una variable local a la funcion, y se verifica que no este definida 
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global"))->second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat == 0)
+					{
+						ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+						contRepeat = ptrTHW -> count(varKey);
+						if(contRepeat == 0)
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat == 0)
+							{
+								//ptrTVars -> insert(pair <int, Variable*> (varKey, new Variable));
+								//ptrVariable = (Variable*) ptrTVars -> find(varKey) -> second;
+								//ptrVariable -> setNombre(nombreVariable);
+								//ptrVariable -> setTipo(VARtype);
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!!La variable " << nombreVariable << L" ya se encuentra definida en la funcion " << nombreProc << endl;
+								error();
+							}
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de HARDWARE" << endl;
+							error();
+						}					
+					}
+					else
+					{
+						wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" ya esta definida en la seccion de GLOBALES" << endl;
+						error();
+					}				
+										
+					//Seccion de Codigo Anterior para agregar parametros a la tabla de parametros de cada funcion
+					ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+					ptrParametros->push_back(new Parametro(nombreVariable,VARtype));
+					for(list<Parametro*>::iterator it=ptrParametros->begin();it!=ptrParametros->end();++it)
+					{
+						//wcout << "Nombre de Parametro: " << (*it)->getNombre() << endl;
+						//wcout << "Tipo de Parametro: " << (*it)->getTipo() << endl;
+					}		
+						
+					
+				.)
+				["," PARAMETROS].	
+	FUNC = 	ID 
+			(.	
+				//Seccion que agrega a la tabla de procedimientos cada una de las funciones
+				nombreProc = (wstring)t -> val;
+				procKey = wstr_hash(nombreProc);
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second; 		
+				contRepeat = ptrTProcs -> count(procKey);
+				if(contRepeat == 0)
+				{
+					declaredFunc = false;
+					ptrTProcs -> insert(pair<int, tablaDataFunc*>(procKey, new tablaDataFunc));	
+					ptrTDataF = (tablaDataFunc*)ptrTProcs->find(procKey)->second;
+					ptrTDataF->insert(pair<wstring,void*>(L"fParams",new Parametros));
+					ptrTDataF->insert(pair<wstring,void*>(L"fVars",new tablaVars));
+					//cout << "SE AGREGO UNA NUEVA FUNCION A LA TABLA DE PROCEDIMIENTOS" << endl;
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"IniciaFunc",L"",L"",nombreProc)));
+					contCuad++;
+				}
+				else
+				{
+					declaredFunc = true;
+					wcout << t->line << L":ERROR!! La funcion " << nombreProc << L" ya se encuentra definida" << endl;
+					error();
+				}
+			.)
+			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE 
+			(.
+				if(!declaredFunc)
+				{
+				tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"FinFunc",L"",L"",nombreProc)));
+				contCuad++;
+				}
+			.) [FUNC].
+	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL [VARIABLES] "-".
+	
+	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
+	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
+	ESTATUTOS =  (
+				"condicion" CONDICION
+				| "ciclo"  CICLOS
+				| "llamar" LLFUNC ENDL
+				| "asignar"  ASIGN ENDL 
+				| "esperar" ENTERO  
+				(.
+					lastToken = (wstring)t->val;
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"delay", L"", L"", lastToken)));
+					contCuad++;
+				.) ENDL
+				)
+				[ESTATUTOS].
+	
+	//----------------------------------------------------------------ESTATUTOS-------------------------------------------------------------------------------
+	//............................................................Seccion de CONDICION........................................................................
+	CONDICION = "si" "(" EXPRESION ")" 
+				(.
+					if(PTipos.top() != 1)
+					{
+						PTipos.pop();
+						wcout << t->line << L":ERROR!! Expresion en la linea " << t->line << L" tiene que ser entera" << endl;
+						error();
+					}
+					else
+					{
+						operando1 = POperandos.top();
+						//wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+						POperandos.pop();
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"inicioIf", operando1, L"", L"")));
+						//wcout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						PSaltos.push(contCuad);
+						contCuad++;
+						
+					}				
+				.)BLOQUE
+				(.
+					saltoFalso = PSaltos.top();
+					PSaltos.pop();
+					tCuadruplos.find(saltoFalso)->second->setDestino(to_wstring((long double)contCuad+1));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finIf", L"", L"", L"")));
+					contCuad++;
+					
+				.)				
+				["sino"
+				(.
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"inicioElse", L"", L"", L"")));
+					//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					PSaltos.push(contCuad);
+					contCuad++;
+				.)
+				BLOQUE
+				(.
+					
+					saltoSino = PSaltos.top();
+					PSaltos.pop();
+					tCuadruplos.find(saltoSino)->second->setDestino(to_wstring((long double)contCuad+1));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finElse", L"", L"", L"")));
+					contCuad++;
+				.)
+				].
+	//.........................................................................................................................................................
+	
+	//...............................................................Seccion de CICLOS......................................................................
+	CICLOS = MIENTRAS | HAZ.
+	MIENTRAS = "mientras" 
+				(.
+					PSaltos.push(contCuad);/*meter cont en PSaltos*/
+				.)
+				"(" EXPRESION ")" "haz" 
+				(.
+					if(PTipos.top() != 1)
+					{
+						PTipos.pop();
+						wcout << t->line << L":ERROR!! Expresion en la linea " << t -> line << L" tiene que ser entera" << endl;
+						error();
+					}
+					else
+					{
+						operando1 = POperandos.top();
+						//wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+						POperandos.pop();
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"falsoM", operando1, L"", L"")));
+						//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						PSaltos.push(contCuad);
+						contCuad++;
+					}
+				.)
+				BLOQUE
+				(.
+					finM = PSaltos.top();
+					PSaltos.pop();
+					tCuadruplos.find(finM)->second->setDestino(to_wstring((long double)contCuad));
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo (L"regresaM", L"", L"", to_wstring((long double)PSaltos.top()))));
+					//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					PSaltos.pop();
+					contCuad++;
+				.).
+				
+	VECES = ENTERO (.tipoVeces = 1;.)| ID 
+				(.
+					// Corroborar el tipo de ID
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+					
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoVeces = ptrVariable->getTipo();								
+					}
+					else
+					{
+						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+						ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+						contRepeat = ptrTVars -> count(varKey);
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							tipoVeces = ptrVariable->getTipo();
+						}
+						else
+						{
+							wcout << t->line << L":ERROR!! La variable no se encuentra definida en el programa" << endl;
+							error();
+						}
+					}							
+										
+				.).
+				
+	HAZ = 	"haz" "(" VECES 
+				(.
+					varVeces = (wstring)t->val;
+					if(tipoVeces != 1)
+					{
+						wcout << t->line << L":ERROR!! Tiene que haber un valor entero en el estatuto \"veces\"" << endl;
+						error();
+					}
+					else
+					{
+						tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"inicioHAZ", varVeces, L"", L"")));
+						//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+						contCuad++;
+					}
+				.) 
+			")" "veces" BLOQUE 
+				(.
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"finHAZ", L"", L"", L"")));
+					//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+					contCuad++;
+				.). 
+	//...........................................................................................................................................................
+	
+	//...................................................................LLAMADAS A FUNCIONES....................................................................
+	LLPARAMETROS = ID
+				(.
+						contParams++;
+						if(contParams > ptrParametros->size())
+						{
+							cout << t->line << ":ERROR!! Hay mas argumentos que los parametros declarados en la funcion" << endl;
+							error();
+						}
+						//wcout << "ContParams: " << contParams << endl;
+						nombreVariable = (wstring)t->val;
+						varKey = wstr_hash(nombreVariable);
+						//wcout << "Variable parametro: " << nombreVariable << endl;
+						//Necesario para buscar si esta declarada en Globales Nombre de variable 
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(nombreVariable));
+						if(contRepeat != 0)
+						{
+							//Obtener el tipo de la variable global
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							//wcout << "El nombre de la variable a la que se les checara el tipo es: " << ptrVariable->getNombre() << endl;
+							tipoParametro = ptrVariable->getTipo();
+							//wcout << "El tipo de " << nombreVariable << " es " << tipoParametro << endl;
+							//Comparar con los tipos del mapa de Parametros
+							//wcout << "Argumento " << (*itParams)->getNombre() << endl;
+							tipoArgumento = (*itParams)->getTipo();
+							//wcout << L"Tipo de Argumento es: " << tipoArgumento << endl;
+							if(tipoParametro == 4 || tipoParametro == 5)
+							{
+								cout << t->line << ":ERROR!! Los arreglos no pueden ser usados como parametros" << endl;
+								error();
+							}
+							
+							if(tipoParametro == tipoArgumento)
+							{
+									ptrListaParametros->push_back(nombreVariable);
+									itParams++;
+							}
+							else
+							{
+									cout << t->line << ":ERROR!! El argumento no corresponde con el tipo del parametro" << endl;
+									error();
+							}
+						}
+						else
+						{
+							//wcout << "Tipo de Argumento: " << tipoArgumento << endl;
+							ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+							contRepeat = ptrTHW -> count(wstr_hash(nombreVariable));
+							if(contRepeat != 0)
+							{
+								cout << t->line << ":ERROR!! Una variable de hardware no puede ser usada como argumento" << endl;
+								error();
+							}
+							else
+							{
+								wcout << t->line << ":ERROR!! El parametro " << nombreVariable << " no esta declarado como variable" << endl;
+								error();
+							}
+							
+						}			
+				.) 
+				["," LLPARAMETROS].
+	
+	LLFUNC = ID 
+			(.
+				
+				nombreFuncLl = (wstring)t->val;
+				procKey = wstr_hash(nombreFuncLl);
+				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second; 		
+				contRepeat = ptrTProcs -> count(procKey);
+				if(contRepeat != 0)
+				{
+					//wcout << "Se esta llamando a " << nombreFuncLl << " y si esta definida" << endl;
+					ptrTDataF = (tablaDataFunc*)ptrTProcs->find(procKey)->second;
+					ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+					itParams = ptrParametros->begin();					
+				}
+				else
+				{
+					wcout << t->line << ":ERROR!! La funcion " << nombreFuncLl << " no se encuentra declarada" << endl;
+					error();
+				}
+			.)
+			"("[
+			(.
+				ptrListaParametros = new list<wstring>;
+				vienenParametros = true;
+			.)
+			LLPARAMETROS]")"
+			(.
+				//cout << "El numero de parametros de la funcion fue: " << ptrParametros->size() << endl;
+				//cout << "El numero de parametros recibido fue: " << contParams << endl;
+				if(contParams != ptrParametros->size())
+				{
+					cout << t->line << ":ERROR!! Existen menos argumentos que los que necesita la funcion" << endl;
+					error();
+				}
+				if(vienenParametros)
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", to_wstring((long double)contLlFunc), L"",nombreFuncLl)));
+				else
+					tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(L"llamaFunc", L"0" , L"",nombreFuncLl)));
+				contCuad++;
+				tLlParametros.insert(pair<int,list<wstring>*>(contLlFunc,ptrListaParametros));
+				contLlFunc++; 
+				contParams = 0;		
+				vienenParametros = false;
+			.).	
+	//...........................................................................................................................................................
+	
+	//.....................................................................Seccion de ASIGNACION.................................................................
+	ASIGN = ID 
+	(.
+			// Corroborar el tipo de ID
+			nombreVariable = (wstring) t -> val;
+			idt = nombreVariable;
+			varKey = wstr_hash(nombreVariable);	
+	.)
+	[VARHW | "posicion" (ENTERO (.vinoEnt = true;.) | ID) (.vinoPos = true;.)] 
+	(.
+		accionHWoPos = (wstring) t->val;
+		
+		ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+		contRepeat = ptrTVars -> count(varKey);
+		if(contRepeat != 0)
+		{
+			ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+			tipoID = ptrVariable->getTipo();
+			if(tipoID == 4 || tipoID == 5)
+			{
+				if(vinoPos)
+				{
+					//AQUI ESTA LO QUE SE CAMBIO PARA ARREGLOS----------------------
+					if(!vinoEnt)
+					{
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+							arregloTipoID = ptrVariable->getTipo();
+						}
+						else
+						{
+							if(varScope == L"Local")
+							{
+								ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+								ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+								ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+								contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+								if(contRepeat != 0)
+								{
+									ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+									arregloTipoID = ptrVariable->getTipo();
+								}
+								else
+								{
+									ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+									ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+									ptrTVars = (tablaVars*) ptrTDataF -> find (L"fParams") -> second;
+									contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+									if(contRepeat != 0)
+									{
+										ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+										arregloTipoID = ptrVariable->getTipo();
+									}
+									else
+									{
+										wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+										error();
+									}
+								}
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+								error();							
+							}
+						}
+
+						if(arregloTipoID != 1)
+						{
+							cout << t->line << ":La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+							error();
+						}
+					}
+					else
+					{
+						arrCasillas = ptrVariable->getNumCasillas();
+						if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+						{
+							cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
+							error();
+						}
+					}
+
+					nombreVariable = nombreVariable + L"[" + accionHWoPos + L"-1]";
+					if(tipoID==4)
+						tipoID = 1;
+					else
+						tipoID = 2;
+				}
+				else
+				{
+					wcout << t->line << ":ERROR!! Debe venir posicion del arreglo" << endl;
+					error();
+				}	
+			}
+
+			POperandos.push(nombreVariable);
+			PTipos.push(tipoID);
+		}
+		else
+		{
+			ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+			contRepeat = ptrTHW -> count(varKey);
+			if(contRepeat != 0)
+			{
+				ptrComponente = (Componente*) ptrTHW->find(varKey)->second;
+				tipoID = ptrComponente->getTipo(accionHWoPos);
+				POperandos.push(nombreVariable + accionHWoPos);
+				PTipos.push(tipoID);
+			}
+			else
+			{
+				if(varScope == L"Local")
+				{
+					ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+					ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+					ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoID = ptrVariable->getTipo();
+						if(tipoID == 4 || tipoID == 5)
+						{
+							if(vinoPos)
+							{
+								//AQUI ESTA LO QUE SE CAMBIO PARA ARREGLOS----------------------
+								if(!vinoEnt)
+								{
+									ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+									contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+									if(contRepeat != 0)
+									{
+										ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+										arregloTipoID = ptrVariable->getTipo();
+									}
+									else
+									{	
+										if(varScope == L"Local")
+										{
+											ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+											ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+											ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+											contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+											if(contRepeat != 0)
+											{
+												ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+												arregloTipoID = ptrVariable->getTipo();
+											}
+											else
+											{
+												ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+												ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+												ptrTVars = (tablaVars*) ptrTDataF -> find (L"fParams") -> second;
+												contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+												if(contRepeat != 0)
+												{
+													ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+													arregloTipoID = ptrVariable->getTipo();
+												}
+												else
+												{												
+													wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+													error();
+												}
+											}
+										}
+										else
+										{
+											wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+											error();
+										}
+									}
+
+									if(arregloTipoID != 1)
+									{	
+
+										cout << t->line << L":ERROR!! La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+										error();
+									}
+								}
+								else
+								{
+									arrCasillas = ptrVariable->getNumCasillas();
+									if(arrCasillas < stoi(accionHWoPos) || stoi(accionHWoPos) < 1)
+									{
+										cout << t->line << ":ERROR!! Fuera de los limites del arreglo!!" << endl;
+										error();
+									}
+								}
+
+								nombreVariable = nombreVariable + L"[" + accionHWoPos + L"-1]";
+								if(tipoID==4)
+									tipoID = 1;
+								else
+									tipoID = 2;
+							}
+							else
+							{
+								wcout << t->line << ":ERROR!! Debe venir posicion del arreglo" << endl;
+								error();
+							}	
+						}
+
+						POperandos.push(nombreVariable);
+						PTipos.push(tipoID);
+
+					}
+					else
+					{
+						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
+						{
+							if((*itP)->getNombre() == nombreVariable)
+							{
+								encontreParam = true;
+								tipoID = (*itP)->getTipo();
+							}
+						}
+						
+						if(!encontreParam)
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+							error();
+						}
+						else
+						{
+							POperandos.push(nombreVariable);
+							PTipos.push(tipoID);
+							encontreParam = false;
+						}
+					}
+				}
+				else
+				{
+					wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+					error();
+				}
+			}	
+		}
+		
+		vinoEnt = false;
+		vinoPos = false;
+	.)ASIGNACION.
+	
+	ASIGNACION = "<-" 
+				(.
+					lastToken = (wstring)t->val;
+					//wcout << "Se agregara el siguiente operador: " << lastToken << endl;
+					POperadores.push(lastToken);// push(=) asignacion
+					//wcout << "Se agrego " << lastToken << " exitosamente" << endl;
+					
+				.)
+				( EXPRESION | FRASE (.lastToken = (wstring)t->val;POperandos.push(lastToken); PTipos.push(3);.))  
+				(.
+				if(POperadores.size() != 0)
+				 {
+					if(POperadores.top() == L"<-")
+					{
+						//cout << "Entramos al if de ASIGNACION" << endl;
+						operador = POperadores.top();
+						//wcout << "Operador = " << POperadores.top() << endl;
+						POperadores.pop();
+						//wcout << "Pop de Operadores Hecho!!" << endl;
+						operandoT1 = PTipos.top();
+						//wcout << "OperandoT1 = " << PTipos.top() << endl;
+						PTipos.pop();
+						//wcout << "Pop de Tipos Hecho!!" << endl;
+						destinoT = PTipos.top();
+						//wcout << "Operando Destino = " << PTipos.top() << endl;
+						PTipos.pop();
+						revTipo = buscaCubo(operador, destinoT, operandoT1);
+						if(revTipo == 13)
+						{
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t ->line  << endl;
+							error();
+						}
+						else
+						{
+						    operando1 = POperandos.top();
+							//wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+							POperandos.pop();
+							destino = POperandos.top();
+							//wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+							POperandos.pop();
+							operando2 = L"";
+							tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
+							//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+							contCuad++;
+						}
+					}
+				}
+				.).
+	//...........................................................................................................................................................
+	
+	//--------------------------------------------------------------------------EXPRESIONES----------------------------------------------------------------------
+	
+	//......................................................................Seccion de EXPRESION.................................................................
+	EXPRESION = EXP 
+				(.
+				
+				if(POperadores.size() != 0)
+				 {
+					//wcout << "El top de POperadores en FACTOR es: " << POperadores.top();
+					
+					if(POperadores.top() == L"<" || POperadores.top() == L">" || POperadores.top() == L"<=" || POperadores.top() == L">=" || POperadores.top() == L"!=" || POperadores.top() == L"=" || POperadores.top() == L"Y" || POperadores.top() == L"O")
+					{
+						operador = POperadores.top();
+						POperadores.pop();
+						operandoT2 = PTipos.top();
+						PTipos.pop();
+						operandoT1 = PTipos.top();
+						PTipos.pop();
+						revTipo = buscaCubo(operador, operandoT1, operandoT2);
+						if(revTipo == 13)
+						{
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t -> line << endl;
+							error();
+						} 
+						else
+						{
+							operando2 = POperandos.top();
+							//wcout << "Se esta a punto de sacar el operando2 EXPRESION " << POperandos.top() << endl;
+							POperandos.pop();
+							operando1 = POperandos.top();
+							//wcout << "Se esta a punto de sacar el operando1 EXPRESION" << POperandos.top() << endl;
+							POperandos.pop();
+							strTemp = L"_t" + to_wstring((long double)contT);
+							destino = strTemp;
+						    tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+							//cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+							//wcout << "Se esta a punto de meter el operando EXPRESION " << destino << endl;
+						    POperandos.push(destino);
+						    PTipos.push(revTipo);
+							contCuad++;
+						    contT++;
+						}
+					}
+				}
+				.)
+				[(">"|"<"|"<="|">="|"!="|"="|"Y"|"O") 
+				(.
+					lastToken = (wstring)t->val;
+					//wcout << "Se agregara el siguiente operador: " << lastToken << endl;
+					POperadores.push(lastToken);/* push de operador */
+				.)
+				EXPRESION].
+	//.............................................................................................................................................................
+	
+	//................................................................Seccion de EXP...............................................................................
+	EXP = TERMINO 
+		(.
+		 if(POperadores.size() != 0)
+		{
+			if(POperadores.top() == L"+" || POperadores.top() == L"-")
+			{
+				operador = POperadores.top();
+				//wcout << "Se esta a punto de sacar el operador " << POperadores.top() << endl;
+				POperadores.pop();
+				operandoT2 = PTipos.top();
+				PTipos.pop();
+				//cout << "El tipo de Operando2 es: " << operandoT2 << endl;
+				operandoT1 = PTipos.top();
+				PTipos.pop();
+				//cout << "El tipo de Operando1 es: " << operandoT1 << endl;
+				revTipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
+				//cout << "El tipo resulantes de Opdo1 y Opd2 es: " << revTipo << endl;
+				if (revTipo == 13)
+				{
+					wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t->line  << endl;
+					error();
+				}
+				else
+				{
+				   operando2 = POperandos.top();
+				   //wcout << "Se esta a punto de sacar el operando2 EXP " << POperandos.top() << endl;
+				   POperandos.pop();
+				   operando1 = POperandos.top();
+				   //wcout << "Se esta a punto de sacar el operando1 EXP " << POperandos.top() << endl;
+				   POperandos.pop();
+				   strTemp = L"_t" + to_wstring((long double)contT);
+				   destino = strTemp;
+				   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));
+				   //cout << "Se creo un nuevo cuadruplo. Contador --> " << contCuad << endl;
+				   //wcout << "Se esta a punto de meter el operando EXP" << destino << endl;
+				   POperandos.push(destino);
+				   PTipos.push(revTipo);
+				   contCuad++;
+				   contT++;
+				}
+			}
+		}
+		.)
+		[("+"|"-") 
+		(.
+			lastToken = (wstring)t->val;
+			//wcout << "Se agregara el siguiente operador: " << lastToken << endl;
+			POperadores.push(lastToken);/*meter operador a POperadores*/
+		.)
+		EXP].
+	//.............................................................................................................................................................
+	
+	//..................................................................Seccion de TERMINO.........................................................................
+	TERMINO = FACTOR 
+			  (.
+				 if(POperadores.size() != 0)
+				 {
+				  if(POperadores.top() == L"*" || POperadores.top() == L"/")
+				   {
+					   operador = POperadores.top();
+					   POperadores.pop();
+					   operandoT2 = PTipos.top();
+					   PTipos.pop();
+					   operandoT1 = PTipos.top();
+					   PTipos.pop();
+					   revTipo = buscaCubo(operador, operandoT1, operandoT2); /*revisar que los tipos sean permitidos*/
+					   if (revTipo == 13)
+					   {
+							wcout << t->line << L":ERROR!! Tipos no compatibles en la linea " << t->line << endl;
+							error();
+					   }
+					   else
+					   {
+						   operando2 = POperandos.top();
+						   //wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+						   POperandos.pop();
+						   operando1 = POperandos.top();
+						   //wcout << "Se esta a punto de sacar el operando " << POperandos.top() << endl;
+						   POperandos.pop();
+						   strTemp = L"_t" + to_wstring((long double)contT);
+						   destino = strTemp;
+						   tCuadruplos.insert(pair<int,Cuadruplo*>(contCuad,new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+						   //wcout << "Se esta a punto de meter el operando TERMINO " << destino << endl;
+						   POperandos.push(destino);
+						   PTipos.push(revTipo);
+						   contCuad++;
+						   contT++;
+						   
+						}
+				   }
+				}
+			  .)
+			  [("*"|"/") 
+			  (.
+					lastToken = (wstring)t->val;
+					//wcout << "Se agregara el siguiente operador: " << lastToken << endl;
+					POperadores.push(lastToken);/*meter operador a POperadores*/			  
+			  .)
+			  TERMINO].
+	
+	//.............................................................................................................................................................
+	
+	//...........................................................Seccion de FACTOR.................................................................................
+	FACTOR = "(" 
+			(.
+				POperadores.push(L"(");/*6 meter fondo falso*/
+				//wcout << "Se agrego fondo falso" << endl;
+			.)
+			EXPRESION ")" 
+			(.
+				POperadores.pop();/*7 sacar fondo falso*/
+				//wcout << "Se saco fondo falso" << endl;
+			.)
+			| 
+			(["-"(.signoEntero = (wstring)t->val;.)]
+			CTE
+			(.
+				lastToken = (wstring)t->val;
+				tipoID = tipoConstante;
+				idt = signoEntero + lastToken;
+				signoEntero = L"";
+			.)
+			
+			| 
+			ID 
+			(.
+					idt = (wstring)t->val;/*var aux para id*/
+					
+					// Corroborar el tipo de ID
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+					
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoID = ptrVariable->getTipo();	
+						//wcout << "El tipo de la variable global es: " << tipoID << endl;
+					}
+					else
+					{
+						if(varScope == L"Local")
+						{
+							ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+							ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+							ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+							contRepeat = ptrTVars -> count(varKey);
+							if(contRepeat != 0)
+							{
+								ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+								tipoID = ptrVariable->getTipo();
+														
+							}
+							else
+							{
+								ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+								for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
+								{
+									if((*itP)->getNombre() == nombreVariable)
+									{
+										encontreParam = true;
+										tipoID = (*itP)->getTipo();
+									}
+								}
+								
+								if(!encontreParam)
+								{
+									ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+									contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+									if(contRepeat != 0)
+									{
+										esTipoHW = true;
+									}
+									else
+									{
+										wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+									}
+								}
+								
+								encontreParam = false;
+							
+							}
+						}
+						else
+						{
+							ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+								contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+								if(contRepeat != 0)
+								{
+									esTipoHW = true;
+								}
+								else
+								{
+									wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+								}	
+						
+						}
+												
+					}						
+				
+			.)
+			["posicion" (ENTERO(.vinoEnt = true;.)|ID) 
+			(.
+				lastToken = (wstring)t->val;	
+				
+				if(tipoID == 4 || tipoID == 5)
+				{
+					//--------------------------
+					if(!vinoEnt)
+					{
+						ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+						contRepeat = ptrTVars -> count(wstr_hash(lastToken));
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(wstr_hash(lastToken))->second;
+							arregloTipoID = ptrVariable->getTipo();
+						}
+						else
+						{	
+							if(varScope == L"Local")
+							{
+								ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+								ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+								ptrTVars = (tablaVars*) ptrTDataF -> find (L"fVars") -> second;
+								contRepeat = ptrTVars -> count(wstr_hash(lastToken));
+								if(contRepeat != 0)
+								{
+									ptrVariable = (Variable*) ptrTVars->find(wstr_hash(lastToken))->second;
+									arregloTipoID = ptrVariable->getTipo();
+								}
+								else
+								{
+									wcout << t->line << L":ERROR!! La variable para indexar el arreglo " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+									error();
+								}
+							}
+							else
+							{
+								wcout << t->line << L":ERROR!! La variable para indexar el arreglo " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+								error();
+							}
+						}
+							
+							
+						if(arregloTipoID != 1)
+						{	
+							cout << t->line << L":ERROR!! La variable utilizada para indexar en el arreglo no es de tipo entero!" << endl;
+							error();
+						}
+						else
+						{
+							idt = idt + L"[" + lastToken + L"-1]";
+							if(tipoID==4)
+							tipoID = 1;
+							else
+							tipoID = 2;
+						}
+					}
+					else
+					{
+						arrCasillas = ptrVariable->getNumCasillas();
+						if(stoi(lastToken) <= arrCasillas && stoi(lastToken) > 0)
+						{	
+							idt = idt + L"[" + lastToken + L"-1]";
+							if(tipoID==4)
+								tipoID = 1;
+							else
+								tipoID = 2;
+						}
+						else
+						{
+							cout << t->line <<":ERROR!!! Fuera del rango del arreglo" << endl;
+							error();
+						}
+					}
+				}
+				else
+				{
+					wcout << t->line <<L":ERROR!! La variable " << nombreVariable <<L" no es un arreglo " << endl;
+					error();
+				}
+				
+				vinoEnt = false;
+			.)
+			|
+			(.
+				if(!esTipoHW)
+				{
+					wcout << t->line << L":ERROR!! La variable " << nombreVariable << L" no es de tipo hardware" << endl;
+					error();
+				}
+			.)
+			VARHW
+			(.
+				lastToken = (wstring)t->val;
+				
+					ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+					ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+					tipoID = ptrComponente->getTipo(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+					idt = idt + lastToken;/*cambiar tipo de token para que incluya HW*/
+			.)
+			]) 
+			(.
+				//wcout << "Se esta a punto de meter el operando FACTOR " << idt << endl;
+				POperandos.push(idt); /*Push pila deoperandos*/
+				//wcout << "El top de POperandos en FACTOR es: " << POperandos.top();
+				PTipos.push(tipoID);/*Push pila de tipos*/
+				//wcout << "El top de PTipos en FACTOR es: " << PTipos.top();
+				esTipoHW = false;
+				
+			.).
+	//.............................................................................................................................................................
+	CTE = ENTERO (.tipoConstante = 1;.) | DECIMAL (.tipoConstante = 2;.).
+	VARHW = HMOTOR 
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 1)
+				{
+					wcout << t->line << "ERROR!! El atributo " << (wstring)t->val << " no es valido para este componente" << endl;
+					error();
+				}
+				
+				
+			.) 
+		   | HSENSOR
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 6)
+				{
+					wcout << t->line << L"ERROR!! El atributo " << (wstring)t->val << L" no es valido para este componente" << endl;
+					error();
+				}
+			.) 
+		   | HLED
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 4)
+				{
+					wcout << t->line << L"ERROR!! El atributo " << (wstring)t->val << L" no es valido para este componente" << endl;
+					error();
+				}
+			
+			.) 
+		   | HPANTALLA
+			(.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 3)
+				{
+					wcout << t->line << L"ERROR!! El atributo " << (wstring)t->val << L" no es valido para este componente" << endl;
+					error();
+				}
+			
+			.) 
+		   | HSERVO
+		   (.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 2)
+				{
+					wcout << t->line << L"ERROR!! El atributo " << (wstring)t->val << L" no es valido para este componente" << endl;
+					error();
+				}
+		   .) 
+		   | HBOTON
+		   (.
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoHW = ptrComponente->getTipoHW();/*obtener el tipo del atributo de la variable de HW*/
+				if(tipoHW != 5)
+				{
+					wcout << t->line << L"ERROR!! El atributo " << (wstring)t->val << L" no es valido para este componente" << endl;
+					error();
+				}
+		   
+		   .).
+	
+END EASYHW.

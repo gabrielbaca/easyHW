@@ -1,0 +1,16 @@
+#include Servo.h
+#include LiquidCrystal.h
+LiquidCrystal p1(24,23,22,4,3,2);
+int x;
+void setup()
+{
+	p1.begin(16,2);
+	p1.setCursor(0,1);
+}
+	p1imprime = "Hola"
+}
+sino
+{
+asignar p1.imprime <- "Adios";
+p1.print(p1imprime);
+}

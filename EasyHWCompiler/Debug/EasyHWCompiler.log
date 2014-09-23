@@ -1,0 +1,24 @@
+﻿Build started 07/05/2013 11:40:48 p.m..
+     1>Project "C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\EasyHWCompiler\EasyHWCompiler.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt Parser.cpp ProgramaPrincipal.cpp
+         ProgramaPrincipal.cpp
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\programaprincipal.cpp(8): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 11.0\vc\include\stdio.h(218) : see declaration of 'fopen'
+         Parser.cpp
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\parser.cpp(276): warning C4018: '<=' : signed/unsigned mismatch
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\parser.cpp(946): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\parser.cpp(134): warning C4101: 'posEspacioOld' : unreferenced local variable
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\parser.cpp(134): warning C4101: 'posEspacioNew' : unreferenced local variable
+     1>c:\users\gabriel\documents\tec\computación y redes computacionales\lenguajes y traductores\proyecto final\easyhwcompiler\easyhwcompiler\parser.cpp(1944): warning C4018: '>' : signed/unsigned mismatch
+         Generating Code...
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\Debug\EasyHWCompiler.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\Debug\EasyHWCompiler.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\Debug\EasyHWCompiler.lib" /MACHINE:X86 Debug\Parser.obj
+         Debug\ProgramaPrincipal.obj
+         Debug\Scanner.obj
+         EasyHWCompiler.vcxproj -> C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\Debug\EasyHWCompiler.exe
+     1>Done Building Project "C:\Users\Gabriel\Documents\TEC\Computación y redes computacionales\Lenguajes y traductores\Proyecto final\EasyHWCompiler\EasyHWCompiler\EasyHWCompiler.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:05.66
