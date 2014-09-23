@@ -265,7 +265,7 @@ PRODUCTIONS
 
 //....................................................................CONFIGURACION DE HARDWARE.............................................................................
 	EASYHW = (.	
-				wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
+				//wcout << L"-------------------INICIO DE PROGRAMA------------------" << endl;
 				contCuad = 1; //Contador de cuadruplos
 				llamandoFunc = false;
 				esTipoHW = false;
@@ -298,10 +298,8 @@ PRODUCTIONS
 				//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Seccion Final y Maquina Virtual~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				dirPath = "C:\\Users\\SULO\\Documents\\Arduino\\";
 				wofstream archIno;
-				wofstream archVarSetup;
 				wofstream archDef;
 				wofstream archLoop;
-				wofstream archHW;
 				string projName;
 				string pathCarpeta,pathArchivo,runArch;
 				int tipoGlobalVar,tipoLocalVar;
@@ -314,15 +312,13 @@ PRODUCTIONS
 				wstring tipoReal;
 				
 				//Creacion y apertura de los archivos que contendran las partes de la traduccion
-				archVarSetup.open("VarSetup.txt");
 				archDef.open("Def.txt");
-				archLoop.open("Loop.txt");	
-				archHW.open("Hardware.txt");
+				archLoop.open("Loop.txt");
 				
 				//''''''''''''''''''''''''''''''''''''''''''Seccion de Hardware, Variables y Funciones'''''''''''''''''''''''''''''''''''''''''''''
 				//Includes para elementos posibles de Hardware
-				wcout << L"#include Servo.h" << endl;
-				wcout << L"#include LiquidCrystal.h" << endl;
+				archLoop << L"#include Servo.h" << endl;
+				archLoop << L"#include LiquidCrystal.h" << endl;
 				//Declaracion de variables de Hardware
 				/*
 					Tipos de Hardware
@@ -340,7 +336,7 @@ PRODUCTIONS
 					HSERVO = "." "angulo".
 					HBOTON = "." "estado".						
 				*/
-				cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
+				//cout << "------------------------Seccion de Hardware--------------------------------"<< endl;
 				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
 				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
 				{
@@ -351,38 +347,38 @@ PRODUCTIONS
 						case 1://MOTOR
 							pinesMotor = it->second->getPin();
 							pinesMotor.erase(pinesMotor.begin());
-							wcout << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << "=" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << "=" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
 							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
-							wcout << L"int " << it->second->getNombre() + L"_fwd =" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_fwd =" << pinesMotor.substr(0,pinesMotor.find(L" ")) << endl;
 							pinesMotor.erase(0,pinesMotor.find(L" ")+1);
-							wcout << L"int " << it->second->getNombre() + L"_bwd =" << pinesMotor.substr(0,pinesMotor.length()) << endl;
-							wcout << L"int " << it->second->getNombre() + L"_velocidad;" << endl;
-							wcout << L"int " << it->second->getNombre() + L"_direccion;" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_bwd =" << pinesMotor.substr(0,pinesMotor.length()) << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_velocidad;" << endl;
+							archLoop << L"int " << it->second->getNombre() + L"_direccion;" << endl;
 							break;						
 						case 2://SERVO
-							wcout << L"Servo " << it->second->getNombre() << L";" << endl;								
+							archLoop << L"Servo " << it->second->getNombre() << L";" << endl;								
 							break;						
 						case 3://PANTALLA
-							wcout << L"LiquidCrystal " << it->second->getNombre() << L"(24,23,22,4,3,2);" << endl;	
+							archLoop << L"LiquidCrystal " << it->second->getNombre() << L"(24,23,22,4,3,2);" << endl;	
 							break;
 						case 4://LED
-							wcout << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							wcout << "int " << it->second->getNombre() + L"_encendido;" << endl;
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << "int " << it->second->getNombre() + L"_encendido;" << endl;
 							break;
 						case 5://BOTON
-							wcout << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							wcout << "int " << it->second->getNombre() + L"_estado;" << endl;
+							archLoop << traduceTipoReal(tipoComponente) << L" " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << "int " << it->second->getNombre() + L"_estado;" << endl;
 							break;
 						case 6://SENSOR
-							wcout << L"int " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
-							wcout << traduceTipoReal(tipoComponente) << " " << it->second->getNombre() + L"_lectura;" << endl;
+							archLoop << L"int " << it->second->getNombre() << L"=" << it->second->getPin() << L";" << endl;
+							archLoop << traduceTipoReal(tipoComponente) << " " << it->second->getNombre() + L"_lectura;" << endl;
 							break;
 					}				
 				
 				}
 								
 				//Variables Globales
-				cout << "----------------Seccion de Variables Globales-----------------------"<< endl;
+				//cout << "----------------Seccion de Variables Globales-----------------------"<< endl;
 				ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
 				for(tablaVars::iterator it = ptrTVars->begin();it != ptrTVars->end();it++)
 				{
@@ -390,41 +386,63 @@ PRODUCTIONS
 					switch(tipoGlobalVar)
 					{
 						case 1:
-							wcout << L"int " << it->second->getNombre() << L";" << endl;
+							archLoop << L"int " << it->second->getNombre() << L";" << endl;
 							break;
 						case 2:
-							wcout << L"double " << it->second->getNombre() << L";" << endl;
+							archLoop << L"double " << it->second->getNombre() << L";" << endl;
 							break;
 						case 3:
-							wcout << L"string " << it->second->getNombre() << L";" << endl;
+							archLoop << L"string " << it->second->getNombre() << L";" << endl;
 							break;
 						case 4:
-							wcout << L"int " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+							archLoop << L"int " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
 							break;												
 						case 5:
-							wcout << L"double " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
+							archLoop << L"double " << it->second->getNombre() << L"[" << it->second->getNumCasillas() << L"];" << endl;
 							break;
 					}
 					
 				}				
 				//'''''''''''''''''''''''''''''''''''''''''''''Seccion de SETUP''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-				wcout << "----------------------Seccion de SETUP----------------------" << endl;
-				wcout << L"void setup()" << endl << L"{" << endl;
+				//wcout << "----------------------Seccion de SETUP----------------------" << endl;
+				ptrTHW = (tablaHardware*) tablaScope.find(wstr_hash(L"Hardware")) -> second;
+				archLoop << L"void setup()" << endl << L"{" << endl;
+				for(tablaHardware::iterator it = ptrTHW->begin(); it != ptrTHW->end(); it++)
+				{
+					tipoComponente = it->second->getTipoHW();
+					//cout << tipoComponente << endl;
+					switch(tipoComponente)
+					{
+						case 1://MOTOR
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_fwd,OUTPUT);" << endl;
+							archLoop << L"\tpinMode(" << it->second->getNombre() << L"_bwd,OUTPUT);"<< endl;
+							break;						
+						case 2://SERVO
+							archLoop << L"\t" << it->second->getNombre() << L".attach(" << it->second->getPin() << L");" << endl;								
+							break;						
+						case 3://PANTALLA
+							archLoop << L"\t" << it->second->getNombre() << L".begin(16,2);" << endl;	
+							archLoop << L"\t" << it->second->getNombre() << L".setCursor(0,1);" << endl;	
+							break;
+						case 4://LED
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",OUTPUT);"<< endl;
+							break;
+						case 5://BOTON
+							archLoop << L"\tpinMode(" << it->second->getNombre()  << L",INPUT);"<< endl;
+							break;
+						case 6://SENSOR
+							break;
+					}				
+				
+				}				
 								
-				
-				
-				
-				
-				
-				
-				
-				wcout << L"}" << endl;
+				archLoop << L"}" << endl;
 				//''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				
 				//'''''''''''''''''''''''''''''''''''''''''''''''Seccion de LOOP'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				//Funciones
 				ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
-				ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
 				contListParam = 0;
 				//'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 				
@@ -437,6 +455,7 @@ PRODUCTIONS
 						archLoop << L"void " << funcName << L"(";
 						ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(wstr_hash(funcName)) -> second;
 						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						contListParam = 0;
 						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
 						{
 							contListParam++;
@@ -561,7 +580,7 @@ PRODUCTIONS
 									}
 									if(campob == L"imprime")
 									{
-										//rutina para impresion en LCD
+										archLoop << pinb << L".print(" << pinb + campob << L");" << endl;
 									}
 									if(campob == L"angulo")
 									{
@@ -1542,7 +1561,7 @@ PRODUCTIONS
 				contCuad++;
 				}
 			.) [FUNC].
-	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
+	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL [VARIABLES] "-".
 	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
