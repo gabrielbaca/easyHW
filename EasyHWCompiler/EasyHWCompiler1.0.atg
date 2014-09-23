@@ -9,18 +9,12 @@
 #include <functional>
 #include "Variable.h";
 #include "Componente.h";
+#include "Cuadruplo.h";
 using namespace std;
 
-COMPILER EASYHW
-
-typedef map <int, Variable*> tablaVars;
-typedef map <int, tablaVars*> tablaProcs;
-typedef map <int, Componente*> tablaHardware;
-
-
-
 //-------------------------------------------------------------------Cubo Semantico y Funciones-----------------------------------------------------------------------------
-int cubosem[12][5][5] = 
+
+const int cubosem[12][5][5] = 
 {
 {{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 3, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //+
 {{1, 2, 13, 4, 5}, {2, 2, 13, 5, 5}, {13, 13, 13, 13, 13}, {4, 5, 13, 4, 5}, {5, 5, 13, 5, 5}}, //-
@@ -34,47 +28,79 @@ int cubosem[12][5][5] =
 {{1, 1, 13, 13, 13}, {2, 2, 13, 13, 13}, {13, 13, 3, 13, 13}, {13, 13, 13, 4, 4}, {13, 13, 13, 5, 5}}, // <-
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}, //<=
 {{1, 1, 13, 13, 13}, {1, 1, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}, {13, 13, 13, 13, 13}}//>=
-}
+};
+
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+COMPILER EASYHW
+
+typedef map <int, Variable*> tablaVars;
+typedef map <int, tablaVars*> tablaProcs;
+typedef map <int, Componente*> tablaHardware;
 
 int buscaCubo(wstring op, int operando1, int operando2)
 {
   int oper;
-  switch(op)
+  int aprob;
+  
+  if(op == L"+")
   {
-    case L"+": oper = 101;
-    break;
-	case L"-": oper = 102;
-    break;
-	case L"*": oper = 103;
-    break;
-	case L"/": oper = 104;
-    break;
-	case L"Y": oper = 105;
-    break;
-	case L"O": oper = 106;
-    break;
-	case L"<": oper = 107;
-    break;
-	case L">": oper = 108;
-    break;
-	case L"!=": oper = 109;
-    break;
-	case L"=": oper = 110;
-    break;
-	case L"<=": oper = 111;
-    break;
-	case L">=": oper = 112;
-    break;
-	case L"NO": oper = 113;
-    break;
-  };
+	oper = 1;
+  }
+  else if (op == L"-")
+  {
+	oper = 2;
+  }
+  else if (op == L"*")
+  {
+	oper = 3;
+  }
+  else if (op == L"/")
+  {
+	oper = 4;
+  }
+  else if (op == L"Y")
+  {
+	oper = 5;
+  }
+  else if (op == L"O")
+  {
+	oper = 6;
+  }
+  else if (op == L"<")
+  {
+	oper = 7;
+  }
+  else if (op == L">")
+  {
+	oper = 8;
+  }
+  else if (op == L"!=")
+  {
+	oper = 9;
+  }
+  else if (op == L"=")
+  {
+	oper = 10;
+  }
+  else if (op == L"<=")
+  {
+	oper = 11;
+  }
+  else if (op == L">=")
+  {
+	oper = 12;
+  }
+  else if (op == L"NO")
+  {
+	oper = 13;
+  } 
 
-   int aprob:
-   aprob = cubosemantico[oper - 100][operando1][operando2];
+   aprob = cubosem[oper][operando1][operando2];
    return aprob;
 }
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 //-----------------------------------------------------Declaracion de Variables Globales para el Programa-------------------------------------------------------------------
@@ -91,29 +117,35 @@ Componente *ptrComponente;
 map <int, void*>::iterator it;
 map <int, void*> tablaScope;
 set <wstring> globalPinSet;
-int direccion;
-list <Cuadruplo*> tcuadruplos;
-stack <wstring> POperadores, POperandos, PSaltos;
-stack <int> PTipos;
-stack <wstring>::iterator itstack;
+int direccion, revTipo;
+list <Cuadruplo> tcuadruplos;
+stack <wstring> POperadores, POperandos;
+stack <int> PTipos; 
+stack<long double>PSaltos;
 wstring operador, operando1, operando2, destino;
 wstring idt; // ID temporal
+wstring signoEntero;
 // Variables 
 int operandoT1, operandoT2;
 // Temporal para el estatuto "while"
 int auxTipo;
 // Variables para crear temporales
-int contT;
+long double contT;
 wstring strTemp;
 bool compilacionExitosa;
 // Variables para estatuto "if"
-int contCuad;
-int saltoFalso;
-int saltoSino;
-int iteC;
+long double contCuad;
+long double saltoFalso;
+long double saltoSino;
+list<Cuadruplo>::iterator iteC;
 // Variables para estatutos ciclicos
-int finM;
-int finH;
+long double finM;
+long double finH;
+int tipoVeces;
+wstring varVeces;
+//Variables para Expresiones
+int tipoID;
+int destinoT;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
@@ -391,14 +423,8 @@ PRODUCTIONS
 			.)
 			"espacios" ENTERO.
 	TIPO = "entero" (.VARtype = 1;.) | "decimal" (.VARtype = 2;.) | "frase" (.VARtype = 3;.).
-	TIPOA = "enteroA" (.VARtype = 4;.) | "decimalA"(.VARtype = 5;.).	
-	ARRPARAM = TIPOA ID
-			(.
-				//PENDIENTE!!!! HASTA SABER COMO PASAR PARAMETROS DE ARREGLOS
-				nombreVariable = (wstring) t -> val;				
-			.)
-			"posicion" ENTERO.
-	PARAMETROS =  (SIMPLE | ARRPARAM) [", " PARAMETROS].	
+	TIPOA = "enteroA" (.VARtype = 4;.) | "decimalA"(.VARtype = 5;.).				
+	PARAMETROS =  SIMPLE ["," PARAMETROS].	
 	FUNCIONES = FUNC [FUNCIONES].
 	FUNC = 	ID 
 			(.
@@ -418,25 +444,26 @@ PRODUCTIONS
 			.)
 			"(" [PARAMETROS] ")" ENDL [FUNCVARS] BLOQUE.
 	FUNCVARS = "VARF" (.varScope = L"Local";.) ENDL "-" ENDL VARIABLES "-".
-		
 	
 	//-----------------------------------------------------Seccion de Estatutos, Expresiones, etc.------------------------------------------------------------
 	BLOQUE = ENDL "{" ENDL [ESTATUTOS] "}" {ENDL}.
 	ESTATUTOS =  ("condicion" CONDICION | "ciclo" CICLOS | "llamar" LLFUNC | "asignar" ASIGN) [ESTATUTOS] .
+	
 	//----------------------------------------------------------------ESTATUTOS-------------------------------------------------------------------------------
 	//............................................................Seccion de CONDICION........................................................................
 	CONDICION = "si" "(" EXPRESION ")" 
 				(.
-					if(PTipos.pop() != 1)
+					if(PTipos.top() != 1)
 					{
+						PTipos.pop();
 						compilacionExitosa = false;
-						wcout << L"Expresion en la linea " << /*numLinea*/ << L" tiene que ser entera" << endl;
+						wcout << L"Expresion en la linea " << t->line << L" tiene que ser entera" << endl;
 					}
 					else
 					{
-						operando1 = POperandos.pop();
-						operando2 = "";
-						tcuadruplos.push_back(new Cuadruplo(L"saltoIF", operando1, L"", L"");
+						operando1 = POperandos.top();
+						POperandos.pop();
+						tcuadruplos.push_back(*(new Cuadruplo(L"saltoIF", operando1, L"", L"")));
 						PSaltos.push(contCuad);
 						contCuad++;
 					}
@@ -450,14 +477,15 @@ PRODUCTIONS
 				
 				.)BLOQUE ["sino"
 				(.
-					saltoFalso = PSaltos.pop();
-					iteC = tcuadruplos.front();
+					saltoFalso = PSaltos.top();
+					PSaltos.pop();
+					iteC = tcuadruplos.begin();
 					for(int i = 0; i < saltoFalso; i++)
 					{
 						iteC++;
 					}
-					*(iteC).setDestino(contCuad);
-					tcuadruplos.push_back(new Cuadruplo (L"saltoELSE", L"", L"", L"");
+					iteC->setDestino(to_wstring(contCuad));
+					tcuadruplos.push_back(*(new Cuadruplo (L"saltoELSE", L"", L"", L"")));
 					PSaltos.push(contCuad);
 					contCuad++;					
 					/*
@@ -469,15 +497,14 @@ PRODUCTIONS
 				.)
 				BLOQUE
 				(.
-					saltoSino = PSaltos.pop();
-					iteC = tcuadruplos.front();
+					saltoSino = PSaltos.top();
+					PSaltos.pop();
+					iteC = tcuadruplos.begin();
 					for(int i = 0; i < saltoSino; i++)
 					{
 						iteC++;
 					}
-					*(iteC).setDestino(contCuad);
-					tcuadruplos.push_back(new Cuadruplo (L"FinM", L"", L"", PSaltos.pop());
-					contCuad++;
+					iteC->setDestino(to_wstring(contCuad));
 					/*
 					Sacar fin de pila-de-saltos
 					rellenar (fin, cont)
@@ -486,24 +513,25 @@ PRODUCTIONS
 				].
 	//.........................................................................................................................................................
 	
-	//...............................................................Seccion de CONDICION......................................................................
+	//...............................................................Seccion de CICLOS......................................................................
 	CICLOS = MIENTRAS | HAZ.
 	MIENTRAS = "mientras" 
 				(.
-					PSaltos.push(contCuad);
-					/*meter cont en PSaltos*/
+					PSaltos.push(contCuad);/*meter cont en PSaltos*/
 				.)
 				"(" EXPRESION ")" "haz" 
 				(.
-					if(PTipos.pop() != 1)
+					if(PTipos.top() != 1)
 					{
+						PTipos.pop();
 						compilacionExitosa = false;
-						wcout << L"" << endl;
+						wcout << L"Expresion en la linea " << t -> line << L" tiene que ser entera" << endl;
 					}
 					else
 					{
-						operando1 = POperandos.pop();
-						tcuadruplos.push_back(new Cuadruplo (L"inicioM", operando1, L"", L"");
+						operando1 = POperandos.top();
+						POperandos.pop();
+						tcuadruplos.push_back(*(new Cuadruplo (L"falsoM", operando1, L"", L"")));
 						PSaltos.push(contCuad);
 						contCuad++;
 					}
@@ -520,13 +548,18 @@ PRODUCTIONS
 				.)
 				BLOQUE
 				(.
-					finM = PSaltos.pop();
-					iteC = tcuadruplos.front();
+					finM = PSaltos.top();
+					PSaltos.pop();
+					iteC = tcuadruplos.begin();
 					for(int i = 0; i < finM; i++)
 					{
 						iteC++;
 					}
-					*(iteC).setDestino
+					iteC->setDestino(to_wstring(contCuad));
+					tcuadruplos.push_back(*(new Cuadruplo (L"regresaM", L"", L"", to_wstring(PSaltos.top()))));
+					PSaltos.pop();
+					contCuad++;
+					
 					/*
 					Sacar falso de PSaltos. 
 					Sacar retorno de PSaltos
@@ -534,21 +567,49 @@ PRODUCTIONS
 					rellenar (falso, cont)
 					*/
 				.).
-	VECES = ENTERO | ID 
+				
+	VECES = ENTERO (.tipoVeces = 1;.)| ID 
 				(.
 					// Corroborar el tipo de ID
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+					
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoVeces = ptrVariable->getTipo();								
+					}
+					else
+					{
+						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						contRepeat = ptrTVars -> count(varKey);
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							tipoVeces = ptrVariable->getTipo();
+						}
+						else
+						{
+							wcout << L"La variable no se encuentra definida en el programa" << endl;
+						}
+					}							
+										
 				.).
+				
 	HAZ = 	"haz" "(" VECES 
 				(.
 					varVeces = lastToken;
-					if(buscaTipo() != 1)
+					if(tipoVeces != 1)
 					{
 						compilacionExitosa = false;
 						wcout << L"Tiene que haber un valor entero en el estatuto \"veces\"" << endl;
 					}
 					else
 					{
-						tcuadruplos.push_back(new Cuadruplo(L"HAZ", varVeces, L"", L"");
+						tcuadruplos.push_back(*(new Cuadruplo(L"inicioHAZ", varVeces, L"", L"")));
 						contCuad++;
 					}
 					/*
@@ -558,47 +619,48 @@ PRODUCTIONS
 				.) 
 			")" "veces" BLOQUE 
 				(.
-					finH = PSaltos.pop();
-					iteC = tcuadruplos.front();
-					for(int i = 0; i < finH; i++)
-					{
-						iteC++;
-					}
-					*(iteC).setDestino();
+					tcuadruplos.push_back(*(new Cuadruplo(L"finHAZ", L"", L"", L"")));
+					contCuad++;
 				.). 
 	//...........................................................................................................................................................
 	
 	//...................................................................LLAMADAS A FUNCIONES....................................................................
-	LLFUNC = ID "(" ")" ENDL.
+	LLFUNC = ID "("[PARAMETROS]")" ENDL.
+		//FALTA VERIFICAR QUE LOS PARAMETROS CORRESPONDAN EN NUMERO Y EN TIPO
+	
 	//...........................................................................................................................................................
 	
 	//.....................................................................Seccion de ASIGNACION.................................................................
 	ASIGN =  ID [VARHW] ASIGNACION.
 	ASIGNACION = "<-" 
 				(.
-					POperadores.push(lastTOKEN);
-					// push(=) asignacion
+					POperadores.push(lastToken);// push(=) asignacion
 				.)
 				( EXPRESION | FRASE )  
 				(.
 					if(POperadores.top() == L"<-")
 					{
-						operador = POperadores.pop(); //son ints
-						operandoT1 = PTipos.pop();
-						destinoT = PTipos.pop();
-						revTipo = buscaCubo(operador, destino, operandoT1);
+						operador = POperadores.top();
+						POperadores.pop();
+						operandoT1 = PTipos.top();
+						PTipos.pop();
+						destinoT = PTipos.top();
+						PTipos.pop();
+						revTipo = buscaCubo(operador, destinoT, operandoT1);
 						if(revTipo == 13)
 						{
 							compilacionExitosa = false;
-							wcout << L"Tipos no compatibles en la linea " << t ->  << endl; /* Pendiente*/
+							wcout << L"Tipos no compatibles en la linea " << t ->line  << endl;
 						}
 						else
 						{
-						    operando1 = POperandos.pop();
-							destino = POperandos.pop();
-							operando2 = "";
-							PTipos.push(revtipo);
-							tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));
+						    operando1 = POperandos.top();
+							POperandos.pop();
+							destino = POperandos.top();
+							POperandos.pop();
+							operando2 = L"";
+							PTipos.push(revTipo);
+							tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));
 						}
 					}
 				.) 
@@ -610,44 +672,38 @@ PRODUCTIONS
 	//......................................................................Seccion de EXPRESION.................................................................
 	EXPRESION = EXP 
 				(.
-					switch(POperadores.top())
+					if(POperadores.top() == L"<" || POperadores.top() == L">" || POperadores.top() == L"<=" || POperadores.top() == L">=" || POperadores.top() == L"!=" || POperadores.top() == L"=")
 					{
-						case L'<':
-						case L'>':
-						case L"<=":
-						case L">=":
-						case L"!=":
-						case L'=':
-						operador = POperadores.pop();
-						operandoT2 = PTipos.pop();
-						operandoT1 = PTipos.pop();
-						revtipo = buscaCubo(operador, operandoT1, operandoT2);
-						if(revtipo == 13)
+						operador = POperadores.top();
+						POperadores.pop();
+						operandoT2 = PTipos.top();
+						PTipos.pop();
+						operandoT1 = PTipos.top();
+						PTipos.pop();
+						revTipo = buscaCubo(operador, operandoT1, operandoT2);
+						if(revTipo == 13)
 						{
 							compilacionExitosa = false;	//Type mismatch
-							wcout << L"Tipos no compatibles en la linea " << /* Pendiente */ << endl;
+							wcout << L"Tipos no compatibles en la linea " << t -> line << endl;
 						} 
 						else
 						{
-							operando2 = POperandos.pop();
-							operando1 = POperandos.pop();
+							operando2 = POperandos.top();
+							POperandos.pop();
+							operando1 = POperandos.top();
+							POperandos.pop();
+							strTemp = L"t" + to_wstring(contT);
 							destino = strTemp;
-						    tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
+						    tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
 						    POperandos.push(destino);
-						    PTipos.push(revtipo);
+						    PTipos.push(revTipo);
 						    contT++;
-						    strTemp = L"t" + to_wstring(contT);
 						}
-						break;
-						default:
-						break;
 					}
-					//igual a mas y menos
 				.)
 				[(">"|"<"|"<="|">="|"!="|"=") 
 				(.
-					POperadores.push(lastTOKEN);
-					/* push de operador */
+					POperadores.push(lastToken);/* push de operador */
 				.)
 				EXP].
 	//.............................................................................................................................................................
@@ -655,34 +711,38 @@ PRODUCTIONS
 	//................................................................Seccion de EXP...............................................................................
 	EXP = TERMINO 
 		(.
-			if(POperadores.top == ("+" | "-" | "Y" | "O")
+			if(POperadores.top() == L"+" || POperadores.top() == L"-" || POperadores.top() == L"Y" || POperadores.top() == L"O")
 			{
-				operador = POperadores.pop();
-				operandoT2 = PTipos.pop();
-				operandoT1 = Ptipos.pop;
-				revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
-				if (revtipo == 13)
+				operador = POperadores.top();
+				POperandos.pop();
+				operandoT2 = PTipos.top();
+				PTipos.pop();
+				operandoT1 = PTipos.top();
+				PTipos.pop();
+				revTipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
+				if (revTipo == 13)
 				{
 					compilacionExitosa = false;
-					wcout << L"Tipos no compatibles en la linea " << t ->  << endl;
+					wcout << L"Tipos no compatibles en la linea " << t ->line  << endl;
 				}
 				else
 				{
-				   operando2 = POperandos.pop();
-				   operando1 = POperandos.pop();
-				   destino = strTemp;
-				   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));
-				   POperandos.push(destino);
-				   PTipos.push(revtipo);
-				   contT++;
+				   operando2 = POperandos.top();
+				   POperandos.pop();
+				   operando1 = POperandos.top();
+				   POperandos.pop();
 				   strTemp = L"t" + to_wstring(contT);
+				   destino = strTemp;
+				   tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));
+				   POperandos.push(destino);
+				   PTipos.push(revTipo);
+				   contT++;
 				}
 			}
 		.)
 		[("+"|"-"|"Y"|"O") 
 		(.
-			POperadores.push(lastTOKEN);
-			/*meter operador a POperadores*/
+			POperadores.push(lastToken);/*meter operador a POperadores*/
 		.)
 		EXP].
 	//.............................................................................................................................................................
@@ -690,34 +750,39 @@ PRODUCTIONS
 	//..................................................................Seccion de TERMINO.........................................................................
 	TERMINO = FACTOR 
 			  (.
-				  if(POperadores.top == ("*" | "/" | "NO")
+				  if(POperadores.top() == L"*" || POperadores.top() == L"/" || POperadores.top() == L"NO")
 				   {
-					   operador = POperadores.pop();
-					   operandoT2 = PTipos.pop();
-					   operandoT1 = PTipos.pop();
-					   revtipo = buscaCubo(operador, operandoT1, operandoT2);/*revisar que los tipos sean permitidos*/
-					   if (revtipo == 13)
+					   operador = POperadores.top();
+					   POperadores.pop();
+					   operandoT2 = PTipos.top();
+					   PTipos.pop();
+					   operandoT1 = PTipos.top();
+					   PTipos.pop();
+					   revTipo = buscaCubo(operador, operandoT1, operandoT2); /*revisar que los tipos sean permitidos*/
+					   if (revTipo == 13)
 					   {
 							compilacionExitosa = false;
-							wcout << L"Tipos no compatibles en la linea " << /* Pendiente */ << endl;
+							wcout << L"Tipos no compatibles en la linea " << t->line << endl;
 					   }
 					   else
 					   {
-						   operando2 = POperandos.pop();
-						   operando1 = POperandos.pop();
-						   destino = strTemp;
-						   tcuadruplos.push_back(new Cuadruplo(operador, operando1, operando2, destino));//Genera cuadruplo
-						   POperandos.push(destino);
-						   PTipos.push(revtipo);
-						   contT++;
+						   operando2 = POperandos.top();
+						   POperandos.pop();
+						   operando1 = POperandos.top();
+						   POperandos.pop();
 						   strTemp = L"t" + to_wstring(contT);
+						   destino = strTemp;
+						   tcuadruplos.push_back(*(new Cuadruplo(operador, operando1, operando2, destino)));//Genera cuadruplo
+						   POperandos.push(destino);
+						   PTipos.push(revTipo);
+						   contT++;
+						   
 						}
 				   }
 			  .)
 			  [("*"|"/"|"NO") 
 			  (.
-					POperadores.push(lastTOKEN);
-					/*meter operador a POperadores*/			  
+					POperadores.push(lastToken);/*meter operador a POperadores*/			  
 			  .)
 			  TERMINO].
 	
@@ -726,36 +791,74 @@ PRODUCTIONS
 	//...........................................................Seccion de FACTOR.................................................................................
 	FACTOR = "(" 
 			(.
-				POperadores.push(L"("));/*6 meter fondo falso*/
+				POperadores.push(L"(");/*6 meter fondo falso*/
 			.)
 			EXPRESION ")" 
 			(.
 				POperadores.pop();/*7 sacar fondo falso*/
 			.)
-			| (["-"]CTE
+			| 
+			(.signoEntero = L"";.)
+			(["-"(.signoEntero = lastToken;.)]
+			CTE
 			(.
-				POperandos.push(lastTOKEN);/*push constante*/			
+				POperandos.push(signoEntero+lastToken);/*push constante*/			
 			.)
 			| ID 
 			(.
-				idt = lastTOKEN;/*var aux para id*/
-				ttipo = tipo();/*FALTA buscar tipo del id y ponerlo en aux*/
+				idt = lastToken;/*var aux para id*/
+					
+					// Corroborar el tipo de ID
+					nombreVariable = (wstring) t -> val;
+					varKey = wstr_hash(nombreVariable);
+					
+					ptrTVars = (tablaVars*) tablaScope.find(wstr_hash(L"Global")) -> second;
+					contRepeat = ptrTVars -> count(varKey);
+					if(contRepeat != 0)
+					{
+						ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+						tipoID = ptrVariable->getTipo();								
+					}
+					else
+					{
+						ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+						ptrTVars = (tablaVars*) ptrTProcs -> find(procKey) -> second;
+						contRepeat = ptrTVars -> count(varKey);
+						if(contRepeat != 0)
+						{
+							ptrVariable = (Variable*) ptrTVars->find(varKey)->second;
+							tipoID = ptrVariable->getTipo();
+						}
+						else
+						{
+							wcout << L"La variable no se encuentra definida en el programa" << endl;
+						}
+					}						
+				
 			.)
 			["posicion" ENTERO 
 			(.
-				/*FALTA ARREGLOS*/
+				if(tipoID != 4 || tipoID != 5)
+				{
+					compilacionExitosa = false;
+					wcout << "Error!! La variable declarada no es un arreglo " << endl;
+				}
+				else
+				{
+					idt = idt + L"[" + lastToken + L"]";
+				}
 			.)
 			| VARHW
 			(.
-				ptrTHW = tablaScope.find(wstr_hash(L"hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
-				it = ptrTHW -> find(idt);/*encuentra la variable de hardware*/
-				ttipos = it -> getTipo(lastTOKEN);/*obtener el tipo del atributo de la variable de HW*/
-				idt = idt + "." + lastTOKEN;/*cambiar tipo de token para que incluya HW*/
+				ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+				ptrComponente = (Componente*) ptrTHW->find(wstr_hash(idt))->second;/*encuentra la variable de hardware*/
+				tipoID = ptrComponente->getTipo(lastToken);/*obtener el tipo del atributo de la variable de HW*/
+				idt = idt + L"." + lastToken;/*cambiar tipo de token para que incluya HW*/
 			.)
 			]) 
 			(.
 				POperandos.push(idt); /*Push pila deoperandos*/
-				PTipos.push(ttipos);/*Push pila de tipos*/
+				PTipos.push(tipoID);/*Push pila de tipos*/
 			.)
 			.
 	//.............................................................................................................................................................
