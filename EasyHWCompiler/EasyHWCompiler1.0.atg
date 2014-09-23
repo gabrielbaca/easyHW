@@ -105,10 +105,6 @@ int buscaCubo(wstring op, int opdo1, int opdo2)
   {
 	oper = 13;
   } 
-  else if (op == L"NO")
-  {
-	oper = 14;
-  }
 
    aprob = cubosem[oper-1][opdo1-1][opdo2-1];
    return aprob;
@@ -160,7 +156,7 @@ wstring traduceTipoParametro(int type)
 }
 
 
-//-----------------------------------------------------Declaracion de Variables Globales para el Programa-------------------------------------------------------------------
+//-----------------------------------------------------Declaracion de Variables Globales para el Programa----------------------------------------------
 int myKey, procKey, varKey, hwKey, contRepeat, HWtype, VARtype;
 bool pantallaOcupada;
 wstring nombreProc, nombreVariable, nombreComponente;
@@ -231,14 +227,14 @@ wstring opdoVM1, opdoVM2, destinationVM, operVM, tempVM;
 list<wstring> *ptrParam;
 wstring tipoPaux, nombrePaux;
 wstring auxOperVM;
-bool hayFunciones,vinoEnt,arregloTipoID,vienenParametros;
+bool hayFunciones,vinoEnt,arregloTipoID,vienenParametros,encontreParam;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CHARACTERS
 	lm = 'a'..'z'.
 	lM = 'A'..'Z'.
 	dig	= "0123456789".
-	str = lm + lM + dig.
+	str = lm + lM + dig + " ".
 		
 TOKENS
 	ID = lm{lM|lm|dig}.
@@ -276,6 +272,7 @@ PRODUCTIONS
 				vinoEnt = false;
 				arregloTipoID = false;
 				vienenParametros = false;
+				encontreParam = false;
 				hayFunciones = false;
 				contParams = 0;
 				contLlFunc = 1;
@@ -1073,6 +1070,7 @@ PRODUCTIONS
 						tempVM = L"#define " + destinationVM + L" (" + opdoVM1 + L" / " + opdoVM2 + L")";
 						archDef << tempVM << endl;
 					} 
+					
 					else if(L"falsoM" == operVM)
 					{
 						opdoVM1 = tCuadruplos.find(i)->second->getOp1();
@@ -1819,7 +1817,7 @@ PRODUCTIONS
 							contRepeat = ptrTHW -> count(wstr_hash(nombreVariable));
 							if(contRepeat != 0)
 							{
-								cout << t->line << ":ERROR!! Una variable de hardware no puede ser usada como parametro" << endl;
+								cout << t->line << ":ERROR!! Una variable de hardware no puede ser usada como argumento" << endl;
 								error();
 							}
 							else
@@ -1925,8 +1923,20 @@ PRODUCTIONS
 								}
 								else
 								{
-									wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
-									error();
+									ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+									ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+									ptrTVars = (tablaVars*) ptrTDataF -> find (L"fParams") -> second;
+									contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+									if(contRepeat != 0)
+									{
+										ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+										arregloTipoID = ptrVariable->getTipo();
+									}
+									else
+									{
+										wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+										error();
+									}
 								}
 							}
 							else
@@ -2020,8 +2030,20 @@ PRODUCTIONS
 											}
 											else
 											{
-												wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
-												error();
+												ptrTProcs = (tablaProcs*) tablaScope.find(wstr_hash(L"Local")) -> second;
+												ptrTDataF = (tablaDataFunc*) ptrTProcs -> find(procKey) -> second;
+												ptrTVars = (tablaVars*) ptrTDataF -> find (L"fParams") -> second;
+												contRepeat = ptrTVars -> count(wstr_hash(accionHWoPos));
+												if(contRepeat != 0)
+												{
+													ptrVariable = (Variable*) ptrTVars->find(wstr_hash(accionHWoPos))->second;
+													arregloTipoID = ptrVariable->getTipo();
+												}
+												else
+												{												
+													wcout << t->line << L":ERROR!! La variable " << accionHWoPos << " no se encuentra definida o es de tipo Hardware" << endl;
+													error();
+												}
 											}
 										}
 										else
@@ -2067,8 +2089,27 @@ PRODUCTIONS
 					}
 					else
 					{
-						wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
-						error();
+						ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+						for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
+						{
+							if((*itP)->getNombre() == nombreVariable)
+							{
+								encontreParam = true;
+								tipoID = (*itP)->getTipo();
+							}
+						}
+						
+						if(!encontreParam)
+						{
+							wcout << t->line << L":ERROR!! La variable " << nombreVariable << " no se encuentra definida" << endl;
+							error();
+						}
+						else
+						{
+							POperandos.push(nombreVariable);
+							PTipos.push(tipoID);
+							encontreParam = false;
+						}
 					}
 				}
 				else
@@ -2245,7 +2286,7 @@ PRODUCTIONS
 			  (.
 				 if(POperadores.size() != 0)
 				 {
-				  if(POperadores.top() == L"*" || POperadores.top() == L"/" || POperadores.top() == L"NO")
+				  if(POperadores.top() == L"*" || POperadores.top() == L"/")
 				   {
 					   operador = POperadores.top();
 					   POperadores.pop();
@@ -2280,7 +2321,7 @@ PRODUCTIONS
 				   }
 				}
 			  .)
-			  [("*"|"/"|"NO") 
+			  [("*"|"/") 
 			  (.
 					lastToken = (wstring)t->val;
 					//wcout << "Se agregara el siguiente operador: " << lastToken << endl;
@@ -2344,16 +2385,31 @@ PRODUCTIONS
 							}
 							else
 							{
-								ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
-								contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
-								if(contRepeat != 0)
+								ptrParametros = (Parametros*) ptrTDataF->find(L"fParams")->second;
+								for(Parametros::iterator itP=ptrParametros->begin();itP != ptrParametros->end();itP++)
 								{
-									esTipoHW = true;
+									if((*itP)->getNombre() == nombreVariable)
+									{
+										encontreParam = true;
+										tipoID = (*itP)->getTipo();
+									}
 								}
-								else
+								
+								if(!encontreParam)
 								{
-									wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+									ptrTHW = (tablaHardware*)tablaScope.find(wstr_hash(L"Hardware")) -> second;/*apuntador a la tabla de variables de Hardware*/
+									contRepeat = ptrTHW->count(varKey);/*obtener el tipo del atributo de la variable de HW*/
+									if(contRepeat != 0)
+									{
+										esTipoHW = true;
+									}
+									else
+									{
+										wcout << t->line << ":ERROR!! La variable " << nombreVariable << " no esta declarada" << endl;
+									}
 								}
+								
+								encontreParam = false;
 							
 							}
 						}
